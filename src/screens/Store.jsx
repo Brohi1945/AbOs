@@ -168,9 +168,9 @@ ${JSON.stringify(shopContext)}`;
 }
 
 export default function StoreScreen({ products, onBack, onLogin, placedOrders, onPlaceOrder }) {
-  const [cart, setCart] = useState([]); // {productId, qty}
+  const [cart, setCart] = useState([]);
   const [cartOpen, setCartOpen] = useState(false);
-  const [view, setView] = useState("browse"); // browse | tracking
+  const [view, setView] = useState("browse");
   const [category, setCategory] = useState("All");
   const [placed, setPlaced] = useState(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);

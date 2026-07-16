@@ -19,6 +19,8 @@ export default function POSView({ products, onCheckout }: POSViewProps) {
   const addToCart = (product: any) => {
     setCart((c) => {
       const existing = c.find((it) => it.productId === product.id);
+      const currentQty = existing?.qty || 0;
+      if (currentQty >= product.stock) return c; // already at max available stock
       if (existing) return c.map((it) => (it.productId === product.id ? { ...it, qty: it.qty + 1 } : it));
       return [...c, { productId: product.id, qty: 1 }];
     });
@@ -29,10 +31,13 @@ export default function POSView({ products, onCheckout }: POSViewProps) {
     const code = barcodeInput.trim();
     if (!code) return;
     const product = products.find((p) => p.barcode === code || p.id.toLowerCase() === code.toLowerCase());
+    const existingQty = cart.find((it) => it.productId === product?.id)?.qty || 0;
     if (!product) {
       setScanMsg({ ok: false, text: `No product found for "${code}"` });
     } else if (product.stock <= 0) {
       setScanMsg({ ok: false, text: `${product.name} is out of stock` });
+    } else if (existingQty >= product.stock) {
+      setScanMsg({ ok: false, text: `Only ${product.stock} units of ${product.name} available` });
     } else {
       addToCart(product);
       setScanMsg({ ok: true, text: `Added ${product.name}` });
@@ -50,7 +55,17 @@ export default function POSView({ products, onCheckout }: POSViewProps) {
   const total = cartLines.reduce((s, l) => s + l.subtotal, 0);
 
   const updateQty = (id: string, delta: number) => {
-    setCart((c) => c.map((it) => (it.productId === id ? { ...it, qty: Math.max(1, it.qty + delta) } : it)).filter((it) => it.qty > 0));
+    setCart((c) =>
+      c
+        .map((it) => {
+          if (it.productId !== id) return it;
+          const product = products.find((p) => p.id === id);
+          const maxQty = product ? product.stock : Infinity;
+          const nextQty = Math.min(maxQty, Math.max(1, it.qty + delta));
+          return { ...it, qty: nextQty };
+        })
+        .filter((it) => it.qty > 0)
+    );
   };
   const removeLine = (id: string) => setCart((c) => c.filter((it) => it.productId !== id));
 
@@ -93,18 +108,24 @@ export default function POSView({ products, onCheckout }: POSViewProps) {
           <Card noPad>
             <h3 className="font-bold text-[#E8E9ED] text-sm px-5 pt-5 mb-3" style={{ fontFamily: displayFont }}>Quick-add products</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 px-5 pb-5">
-              {products.map((p) => (
-                <button
-                  key={p.id}
-                  disabled={p.stock <= 0}
-                  onClick={() => addToCart(p)}
-                  className="text-left rounded-xl border border-[rgba(255,255,255,0.06)] p-3 hover:border-indigo-500/40 hover:shadow-sm transition disabled:opacity-40 disabled:hover:border-[rgba(255,255,255,0.06)]"
-                >
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs mb-2 ${p.color}`}>{p.name.slice(0, 1)}</div>
-                  <div className="text-xs font-semibold text-[#E8E9ED] leading-tight mb-0.5">{p.name}</div>
-                  <div className="text-[11px] text-[#8B8F9C]">{money(p.price)} · {p.stock} in stock</div>
-                </button>
-              ))}
+              {products.map((p) => {
+                const inCartQty = cart.find((it) => it.productId === p.id)?.qty || 0;
+                const atMax = inCartQty >= p.stock;
+                return (
+                  <button
+                    key={p.id}
+                    disabled={p.stock <= 0 || atMax}
+                    onClick={() => addToCart(p)}
+                    className="text-left rounded-xl border border-[rgba(255,255,255,0.06)] p-3 hover:border-indigo-500/40 hover:shadow-sm transition disabled:opacity-40 disabled:hover:border-[rgba(255,255,255,0.06)]"
+                  >
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs mb-2 ${p.color}`}>{p.name.slice(0, 1)}</div>
+                    <div className="text-xs font-semibold text-[#E8E9ED] leading-tight mb-0.5">{p.name}</div>
+                    <div className="text-[11px] text-[#8B8F9C]">
+                      {money(p.price)} · {atMax ? "max in cart" : `${p.stock} in stock`}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </Card>
         </div>
@@ -130,7 +151,11 @@ export default function POSView({ products, onCheckout }: POSViewProps) {
                         <Minus size={11} />
                       </button>
                       <span className="text-xs font-semibold w-5 text-center text-[#E8E9ED]">{l.qty}</span>
-                      <button onClick={() => updateQty(l.productId, 1)} className="w-6 h-6 rounded-md bg-white/5 flex items-center justify-center text-[#8B8F9C]">
+                      <button
+                        onClick={() => updateQty(l.productId, 1)}
+                        disabled={l.qty >= l.product.stock}
+                        className="w-6 h-6 rounded-md bg-white/5 flex items-center justify-center text-[#8B8F9C] disabled:opacity-30"
+                      >
                         <Plus size={11} />
                       </button>
                       <button onClick={() => removeLine(l.productId)} className="w-6 h-6 rounded-md hover:bg-red-500/10 flex items-center justify-center text-[#6B7080] hover:text-red-400">

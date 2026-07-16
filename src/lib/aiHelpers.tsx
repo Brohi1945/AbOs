@@ -27,8 +27,12 @@ interface AssistantAction {
 }
 
 export async function callClaude(systemPrompt: string, history: ChatMessage[], userText: string): Promise<string> {
+  // Only send the most recent turns. Sending the entire, ever-growing
+  // conversation on every request bloats the prompt and is a common cause
+  // of the model losing track and repeating earlier replies in long chats.
+  const recentHistory = history.slice(-16);
   const apiMessages = [
-    ...history
+    ...recentHistory
       .filter((m) => m.role === "user" || m.role === "bot")
       .map((m) => ({ role: m.role === "bot" ? "assistant" : "user", content: m.text })),
     { role: "user", content: userText },

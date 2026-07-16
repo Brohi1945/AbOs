@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { ArrowLeft, Lock, Mail as MailIcon } from "lucide-react";
 import { displayFont, bodyFont } from "../lib/theme";
-import { Button, Field, inputCls } from "../components/ui.jsx";
+import { Button, Field, inputCls } from "../components/ui";
 
 export default function LoginScreen({ onBack, onLoginAs }) {
   const [role, setRole] = useState("admin");

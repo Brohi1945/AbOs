@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Sidebar, Topbar } from "../components/layout";
 import { bodyFont } from "../lib/theme";
@@ -17,8 +18,7 @@ import BusinessIntelligenceView from "../views/BusinessIntelligenceView";
 import MarketingView from "../views/MarketingView";
 import AssistantView from "../views/AssistantView";
 
-export default function AdminApp({ onLogout, onGoStore, products, setProducts, orders, setOrders, customers, setCustomers }) {
-  const [section, setSection] = useState("dashboard");
+export default function AdminApp({ section, onSectionChange, onLogout, onGoStore, products, setProducts, orders, setOrders, customers, setCustomers }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [campaigns, setCampaigns] = useState(seedCampaigns());
@@ -90,7 +90,7 @@ export default function AdminApp({ onLogout, onGoStore, products, setProducts, o
 
   return (
     <div className="min-h-screen bg-[#0B0D12]" style={{ fontFamily: bodyFont }}>
-      <Sidebar active={section} onSelect={setSection} open={sidebarOpen} onClose={() => setSidebarOpen(false)} lowStockCount={lowStock.length} onLogout={onLogout} onGoStore={onGoStore} />
+      <Sidebar active={section} onSelect={onSectionChange} open={sidebarOpen} onClose={() => setSidebarOpen(false)} lowStockCount={lowStock.length} onLogout={onLogout} onGoStore={onGoStore} />
       <div className="lg:pl-64">
         <Topbar
           title={titles[section]}
@@ -101,7 +101,7 @@ export default function AdminApp({ onLogout, onGoStore, products, setProducts, o
           notifications={notifications}
         />
         <div className="p-4 sm:p-6 max-w-6xl">
-          {section === "dashboard" && <DashboardView orders={orders} products={products} customers={customers} onGoTo={setSection} />}
+          {section === "dashboard" && <DashboardView orders={orders} products={products} customers={customers} onGoTo={onSectionChange} />}
           {section === "orders" && <OrdersView orders={orders} onUpdateStatus={handleUpdateStatus} />}
           {section === "inventory" && <InventoryView products={products} onAdd={handleAddProduct} onEdit={handleEditProduct} onDelete={handleDeleteProduct} />}
           {section === "customers" && <CustomersView customers={customers} orders={orders} onAdd={handleAddCustomer} />}

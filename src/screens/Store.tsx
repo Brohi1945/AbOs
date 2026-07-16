@@ -195,11 +195,23 @@ export default function StoreScreen({ products, onBack, onLogin, placedOrders, o
   const addToCart = (p: any) => {
     setCart((c) => {
       const existing = c.find((it) => it.productId === p.id);
+      const currentQty = existing?.qty || 0;
+      if (currentQty >= p.stock) return c; // already at max available stock
       if (existing) return c.map((it) => (it.productId === p.id ? { ...it, qty: it.qty + 1 } : it));
       return [...c, { productId: p.id, qty: 1 }];
     });
   };
-  const updateQty = (id: string, delta: number) => setCart((c) => c.map((it) => (it.productId === id ? { ...it, qty: it.qty + delta } : it)).filter((it) => it.qty > 0));
+  const updateQty = (id: string, delta: number) =>
+    setCart((c) =>
+      c
+        .map((it) => {
+          if (it.productId !== id) return it;
+          const product = products.find((p) => p.id === id);
+          const maxQty = product ? product.stock : Infinity;
+          return { ...it, qty: Math.min(maxQty, Math.max(1, it.qty + delta)) };
+        })
+        .filter((it) => it.qty > 0)
+    );
 
   const cartLines = cart.map((it) => ({ ...it, product: products.find((p) => p.id === it.productId) })).filter((l) => l.product);
   const total = cartLines.reduce((s, l) => s + l.product.price * l.qty, 0);
@@ -272,6 +284,8 @@ export default function StoreScreen({ products, onBack, onLogin, placedOrders, o
                     <span className="text-sm font-bold text-indigo-400">{money(p.price)}</span>
                     {p.stock <= 0 ? (
                       <span className="text-[10px] font-semibold text-red-400">Sold out</span>
+                    ) : (cart.find((it) => it.productId === p.id)?.qty || 0) >= p.stock ? (
+                      <span className="text-[10px] font-semibold text-[#8B8F9C]">Max in cart</span>
                     ) : (
                       <button onClick={() => addToCart(p)} className="w-7 h-7 rounded-lg bg-[#C9A44C] text-black flex items-center justify-center hover:bg-[#8A712F]">
                         <Plus size={13} />
@@ -324,7 +338,11 @@ export default function StoreScreen({ products, onBack, onLogin, placedOrders, o
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button onClick={() => updateQty(l.productId, -1)} className="w-6 h-6 rounded-md bg-white/5 flex items-center justify-center text-[#8B8F9C]"><Minus size={11} /></button>
                     <span className="text-xs font-semibold w-5 text-center text-[#E8E9ED]">{l.qty}</span>
-                    <button onClick={() => updateQty(l.productId, 1)} className="w-6 h-6 rounded-md bg-white/5 flex items-center justify-center text-[#8B8F9C]"><Plus size={11} /></button>
+                    <button
+                      onClick={() => updateQty(l.productId, 1)}
+                      disabled={l.qty >= l.product.stock}
+                      className="w-6 h-6 rounded-md bg-white/5 flex items-center justify-center text-[#8B8F9C] disabled:opacity-30"
+                    ><Plus size={11} /></button>
                   </div>
                 </div>
               ))}

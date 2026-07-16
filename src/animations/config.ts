@@ -6,7 +6,7 @@
 //  sirf neeche wale numbers change karo — poori app update ho jayegi.
 // ============================================================
 
-export const DURATION = {
+ = "texport const DURATION = {
   fast: 0.15,
   base: 0.18,
   medium: 0.22,

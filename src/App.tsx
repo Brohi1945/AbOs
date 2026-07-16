@@ -12,11 +12,45 @@ import AdminApp from "./screens/AdminApp";
 import StoreScreen from "./screens/Store";
 
 export default function BusinessAutomationSystem() {
-  const [screen, setScreen] = useState("landing");
+  const [screenStack, setScreenStack] = useState(["landing"]);
+  const screen = screenStack[screenStack.length - 1];
   const [products, setProducts] = useState(seedProducts());
   const [orders, setOrders] = useState(seedOrders());
   const [placedOrders, setPlacedOrders] = useState([]);
   const [customers, setCustomers] = useState(seedCustomers());
+
+  // Push a new screen onto the stack (forward navigation) and register a
+  // matching browser history entry, so the hardware/software back button
+  // has something of ours to go back to instead of leaving the app.
+  const navigate = (next) => {
+    setScreenStack((s) => [...s, next]);
+    window.history.pushState({ depth: screenStack.length + 1 }, "");
+  };
+
+  // Pop back to the previous screen (used by in-app "back" buttons). This
+  // only moves browser history backward — the popstate listener below is
+  // the single place that actually pops screenStack, so in-app back button
+  // taps and the hardware/software back button behave identically and
+  // never double-pop.
+  const goBack = () => {
+    window.history.back();
+  };
+
+  // Full reset (used by "Log out") — clears the stack back to the start
+  // rather than just going back one step.
+  const resetTo = (start) => {
+    setScreenStack([start]);
+    window.history.replaceState({ depth: 1 }, "");
+  };
+
+  useEffect(() => {
+    window.history.replaceState({ depth: 1 }, "");
+    const onPopState = () => {
+      setScreenStack((s) => (s.length > 1 ? s.slice(0, -1) : s));
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -62,15 +96,15 @@ export default function BusinessAutomationSystem() {
       `}</style>
 
       {screen === "landing" && (
-        <LandingScreen onLogin={() => setScreen("login")} onBrowseStore={() => setScreen("store")} />
+        <LandingScreen onLogin={() => navigate("login")} onBrowseStore={() => navigate("store")} />
       )}
       {screen === "login" && (
-        <LoginScreen onBack={() => setScreen("landing")} onLoginAs={(role) => setScreen(role === "admin" ? "admin" : "store")} />
+        <LoginScreen onBack={goBack} onLoginAs={(role) => navigate(role === "admin" ? "admin" : "store")} />
       )}
       {screen === "admin" && (
         <AdminApp
-          onLogout={() => setScreen("landing")}
-          onGoStore={() => setScreen("store")}
+          onLogout={() => resetTo("landing")}
+          onGoStore={() => navigate("store")}
           products={products}
           setProducts={setProducts}
           orders={orders}
@@ -82,8 +116,8 @@ export default function BusinessAutomationSystem() {
       {screen === "store" && (
         <StoreScreen
           products={products}
-          onBack={() => setScreen("landing")}
-          onLogin={() => setScreen("login")}
+          onBack={goBack}
+          onLogin={() => navigate("login")}
           placedOrders={placedOrders}
           onPlaceOrder={handlePlaceOrder}
         />

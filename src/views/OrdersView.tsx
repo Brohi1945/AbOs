@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ShoppingCart, Filter, Download, ChevronRight } from "lucide-react";
 import { displayFont } from "../lib/theme";
 import { money } from "../lib/utils";
 import { STATUS_META } from "../lib/seedData";
 import { Card, Badge, StatusBadge, Button, Drawer, EmptyState } from "../components/ui";
+import { SkeletonTable } from "../components/Skeleton";
 
 interface OrdersViewProps {
   orders: any[];
@@ -13,6 +14,12 @@ interface OrdersViewProps {
 export default function OrdersView({ orders, onUpdateStatus }: OrdersViewProps) {
   const [filter, setFilter] = useState("all");
   const [selected, setSelected] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 600);
+    return () => clearTimeout(timer);
+  }, []);
 
   const filtered = filter === "all" ? orders : orders.filter((o) => o.status === filter);
   const tabs = [
@@ -23,13 +30,39 @@ export default function OrdersView({ orders, onUpdateStatus }: OrdersViewProps) 
     { key: "cancelled", label: "Cancelled" },
   ];
 
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="h-8 w-32 bg-[#1B1F2A] rounded-lg animate-pulse" />
+          <div className="flex gap-2">
+            <div className="h-9 w-20 bg-[#1B1F2A] rounded-lg animate-pulse" />
+            <div className="h-9 w-20 bg-[#1B1F2A] rounded-lg animate-pulse" />
+          </div>
+        </div>
+        <div className="flex gap-1.5 overflow-x-auto pb-1">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-9 w-16 bg-[#1B1F2A] rounded-xl animate-pulse" />
+          ))}
+        </div>
+        <SkeletonTable rows={6} cols={6} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h2 className="text-xl font-bold text-[#E8E9ED]" style={{ fontFamily: displayFont }}>Orders</h2>
+        <h2 className="text-xl font-bold text-[#E8E9ED]" style={{ fontFamily: displayFont }}>
+          Orders
+        </h2>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" icon={Download}>Export</Button>
-          <Button variant="secondary" size="sm" icon={Filter}>Filter</Button>
+          <Button variant="secondary" size="sm" icon={Download}>
+            Export
+          </Button>
+          <Button variant="secondary" size="sm" icon={Filter}>
+            Filter
+          </Button>
         </div>
       </div>
 
@@ -39,7 +72,9 @@ export default function OrdersView({ orders, onUpdateStatus }: OrdersViewProps) 
             key={t.key}
             onClick={() => setFilter(t.key)}
             className={`text-xs font-semibold px-3.5 py-2 rounded-xl whitespace-nowrap transition ${
-              filter === t.key ? "bg-[#C9A44C] text-black" : "bg-[#14171F] text-[#8B8F9C] border border-[rgba(255,255,255,0.06)]"
+              filter === t.key
+                ? "bg-[#C9A44C] text-black"
+                : "bg-[#14171F] text-[#8B8F9C] border border-[rgba(255,255,255,0.06)]"
             }`}
           >
             {t.label}
@@ -66,12 +101,20 @@ export default function OrdersView({ orders, onUpdateStatus }: OrdersViewProps) 
               </thead>
               <tbody>
                 {filtered.map((o) => (
-                  <tr key={o.id} className="border-t border-[rgba(255,255,255,0.06)] hover:bg-white/5 transition cursor-pointer" onClick={() => setSelected(o)}>
+                  <tr
+                    key={o.id}
+                    className="border-t border-[rgba(255,255,255,0.06)] hover:bg-white/5 transition cursor-pointer"
+                    onClick={() => setSelected(o)}
+                  >
                     <td className="px-5 py-3.5 font-semibold text-[#E8E9ED]">{o.id}</td>
                     <td className="px-5 py-3.5 text-[#C7C9D1]">{o.customer}</td>
-                    <td className="px-5 py-3.5"><Badge tone="slate">{o.channel}</Badge></td>
+                    <td className="px-5 py-3.5">
+                      <Badge tone="slate">{o.channel}</Badge>
+                    </td>
                     <td className="px-5 py-3.5 text-[#E8E9ED] font-medium">{money(o.total)}</td>
-                    <td className="px-5 py-3.5"><StatusBadge status={o.status} /></td>
+                    <td className="px-5 py-3.5">
+                      <StatusBadge status={o.status} />
+                    </td>
                     <td className="px-5 py-3.5 text-[#8B8F9C] text-xs">{o.date}</td>
                     <td className="px-5 py-3.5 text-right">
                       <ChevronRight size={15} className="text-[#6B7080]" />
@@ -116,9 +159,14 @@ export default function OrdersView({ orders, onUpdateStatus }: OrdersViewProps) 
                 {Object.keys(STATUS_META).map((s) => (
                   <button
                     key={s}
-                    onClick={() => { onUpdateStatus(selected.id, s); setSelected((sel: any) => ({ ...sel, status: s })); }}
+                    onClick={() => {
+                      onUpdateStatus(selected.id, s);
+                      setSelected((sel: any) => ({ ...sel, status: s }));
+                    }}
                     className={`text-xs font-semibold px-3 py-2.5 rounded-xl border transition ${
-                      selected.status === s ? STATUS_META[s].cls : "bg-[#14171F] border-[rgba(255,255,255,0.06)] text-[#8B8F9C] hover:border-indigo-500/40"
+                      selected.status === s
+                        ? STATUS_META[s].cls
+                        : "bg-[#14171F] border-[rgba(255,255,255,0.06)] text-[#8B8F9C] hover:border-indigo-500/40"
                     }`}
                   >
                     {STATUS_META[s].label}

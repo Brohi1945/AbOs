@@ -27,12 +27,18 @@ export default function AssistantView({ orders, products, onAddProduct, onEditPr
   const [loading, setLoading] = useState(false);
   const suggestions = ["Show today's sales", "Low stock items", "Recent orders", "Add a new product"];
   const endRef = useRef<HTMLDivElement>(null);
+  // Guards against double-submit races (e.g. mobile "Enter"/"Go" key firing
+  // alongside a tap on the Send button). React state updates aren't
+  // synchronous, so checking `loading` alone lets both calls slip through
+  // before the button disables — this ref blocks the second call instantly.
+  const sendingRef = useRef(false);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
 
   const send = async (text?: string) => {
     const q = (text ?? input).trim();
-    if (!q || loading) return;
+    if (!q || sendingRef.current) return;
+    sendingRef.current = true;
     const history = messages;
     setMessages((m) => [...m, { role: "user", text: q }]);
     setInput("");
@@ -93,6 +99,7 @@ ${JSON.stringify(storeContext)}`;
       setMessages((m) => [...m, { role: "bot", text: "Sorry, I couldn't reach the assistant just now. Please try again in a moment." }]);
     } finally {
       setLoading(false);
+      sendingRef.current = false;
     }
   };
 

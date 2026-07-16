@@ -4,7 +4,7 @@ import { displayFont } from "../lib/theme";
 import { money, computeCustomerStats } from "../lib/utils";
 import { Card, Badge, StatusBadge, Button, Drawer, Modal, Field, inputCls, EmptyState } from "../components/ui";
 
-function CustomerForm({ initial, onSave, onCancel }) {
+function CustomerForm({ initial = null, onSave, onCancel }) {
   const [form, setForm] = useState(initial || { name: "", phone: "", email: "" });
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 

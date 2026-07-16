@@ -3,8 +3,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, TrendingUp, TrendingDown, LucideIcon } from "lucide-react";
 import { displayFont } from "../lib/theme";
 import { STATUS_META } from "../lib/seedData";
-import { backdropFade, modalScale, drawerSlideRight, backdropTransition, modalTransition, drawerTransition } from "../animations/variants";
-import { useCountUp } from "../animations/useCountUp";
+import {
+  backdropFade,
+  modalScale,
+  drawerSlideRight,
+  backdropTransition,
+  modalTransition,
+  drawerTransition,
+} from "../animations/variants";
+import { useCountUp } from "../animations";
 
 type ButtonVariant = "primary" | "secondary" | "success" | "danger" | "ghost" | "glassOutline" | "glassSolid";
 type ButtonSize = "sm" | "md" | "lg";
@@ -17,9 +24,21 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   className?: string;
 }
 
-export function Button({ children, variant = "primary", size = "md", icon: Icon = null, className = "", ...props }: ButtonProps) {
-  const base = "inline-flex items-center justify-center gap-1.5 font-semibold rounded-xl transition active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100 whitespace-nowrap";
-  const sizes: Record<ButtonSize, string> = { sm: "text-xs px-3 py-1.5", md: "text-sm px-4 py-2.5", lg: "text-sm px-5 py-3" };
+export function Button({
+  children,
+  variant = "primary",
+  size = "md",
+  icon: Icon = null,
+  className = "",
+  ...props
+}: ButtonProps) {
+  const base =
+    "inline-flex items-center justify-center gap-1.5 font-semibold rounded-xl transition active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100 whitespace-nowrap";
+  const sizes: Record<ButtonSize, string> = {
+    sm: "text-xs px-3 py-1.5",
+    md: "text-sm px-4 py-2.5",
+    lg: "text-sm px-5 py-3",
+  };
 
   const variants: Record<ButtonVariant, string> = {
     primary: "bg-[#C9A44C] text-black hover:bg-[#8A712F]",
@@ -32,10 +51,16 @@ export function Button({ children, variant = "primary", size = "md", icon: Icon 
   };
 
   return (
-    <button className={`${base} ${sizes[size]} ${variants[variant]} ${className}`} {...props}>
+    <motion.button
+      whileTap={{ scale: 0.97 }}
+      whileHover={{ scale: 1.02 }}
+      transition={{ type: "spring", stiffness: 400, damping: 17 }}
+      className={`${base} ${sizes[size]} ${variants[variant]} ${className}`}
+      {...props}
+    >
       {Icon && <Icon size={size === "sm" ? 13 : 15} />}
       {children}
-    </button>
+    </motion.button>
   );
 }
 
@@ -44,16 +69,32 @@ interface CardProps {
   className?: string;
   noPad?: boolean;
   style?: React.CSSProperties;
+  hover?: boolean;
 }
 
-export function Card({ children, className = "", noPad = false, style = undefined }: CardProps) {
+export function Card({
+  children,
+  className = "",
+  noPad = false,
+  style = undefined,
+  hover = true,
+}: CardProps) {
   return (
-    <div
+    <motion.div
+      whileHover={
+        hover
+          ? {
+              scale: 1.01,
+              boxShadow: "0 8px 30px rgba(0,0,0,0.3)",
+              transition: { duration: 0.15 },
+            }
+          : undefined
+      }
       style={style}
       className={`bg-[#14171F] border border-[rgba(255,255,255,0.06)] rounded-xl ${noPad ? "" : "p-5"} ${className}`}
     >
       {children}
-    </div>
+    </motion.div>
   );
 }
 
@@ -72,7 +113,11 @@ export function Badge({ children, tone = "slate" }: BadgeProps) {
     amber: "bg-yellow-500/10 text-yellow-400",
     red: "bg-red-500/10 text-red-400",
   };
-  return <span className={`text-[11px] font-semibold px-2 py-1 rounded-lg ${tones[tone]}`}>{children}</span>;
+  return (
+    <span className={`text-[11px] font-semibold px-2 py-1 rounded-lg ${tones[tone]}`}>
+      {children}
+    </span>
+  );
 }
 
 interface StatusBadgeProps {
@@ -83,7 +128,9 @@ export function StatusBadge({ status }: StatusBadgeProps) {
   const meta = STATUS_META[status] || STATUS_META.pending;
   const Icon = meta.icon;
   return (
-    <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-lg border ${meta.cls}`}>
+    <span
+      className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-lg border ${meta.cls}`}
+    >
       <Icon size={11} /> {meta.label}
     </span>
   );
@@ -110,22 +157,31 @@ export function StatCard({ icon: Icon, label, value, delta = null, tone = "indig
   const animatedValue = useCountUp(value);
 
   return (
-    <Card className="flex items-start justify-between">
+    <motion.div
+      whileHover={{
+        scale: 1.02,
+        boxShadow: "0 8px 30px rgba(0,0,0,0.3)",
+        transition: { duration: 0.15 },
+      }}
+      className="bg-[#14171F] border border-[rgba(255,255,255,0.06)] rounded-xl p-5 flex items-start justify-between"
+    >
       <div>
         <div className="text-xs font-medium text-[#8B8F9C] mb-1.5">{label}</div>
-        <div className="text-2xl font-bold text-[#E8E9ED]" style={{ fontFamily: displayFont }}>{animatedValue}</div>
-
+        <div className="text-2xl font-bold text-[#E8E9ED]" style={{ fontFamily: displayFont }}>
+          {animatedValue}
+        </div>
         {delta && (
-          <div className={`flex items-center gap-1 mt-2 text-xs font-semibold ${delta.startsWith("-") ? "text-red-500" : "text-green-400"}`}>
+          <div
+            className={`flex items-center gap-1 mt-2 text-xs font-semibold ${delta.startsWith("-") ? "text-red-500" : "text-green-400"}`}
+          >
             {delta.startsWith("-") ? <TrendingDown size={13} /> : <TrendingUp size={13} />} {delta}
           </div>
         )}
       </div>
-
       <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${tones[tone]}`}>
         <Icon size={18} />
       </div>
-    </Card>
+    </motion.div>
   );
 }
 
@@ -151,7 +207,6 @@ export function Drawer({ open, onClose, title, children, width = 420 }: DrawerPr
             transition={backdropTransition}
             onClick={onClose}
           />
-
           <motion.div
             className="absolute top-0 right-0 bottom-0 bg-[#14171F] shadow-2xl overflow-y-auto"
             style={{ width: "92%", maxWidth: width }}
@@ -162,13 +217,16 @@ export function Drawer({ open, onClose, title, children, width = 420 }: DrawerPr
             transition={drawerTransition}
           >
             <div className="flex items-center justify-between px-5 py-4 border-b border-[rgba(255,255,255,0.06)] sticky top-0 bg-[#14171F] z-10">
-              <h3 className="font-bold text-[#E8E9ED]" style={{ fontFamily: displayFont }}>{title}</h3>
-
-              <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-white/5 flex items-center justify-center text-gray-400">
+              <h3 className="font-bold text-[#E8E9ED]" style={{ fontFamily: displayFont }}>
+                {title}
+              </h3>
+              <button
+                onClick={onClose}
+                className="w-8 h-8 rounded-lg hover:bg-white/5 flex items-center justify-center text-gray-400"
+              >
                 <X size={17} />
               </button>
             </div>
-
             <div className="p-5">{children}</div>
           </motion.div>
         </div>
@@ -199,7 +257,6 @@ export function Modal({ open, onClose, title, children, width = 460 }: ModalProp
             transition={backdropTransition}
             onClick={onClose}
           />
-
           <motion.div
             className="relative bg-[#14171F] rounded-2xl shadow-2xl w-full max-h-[88vh] overflow-y-auto"
             style={{ maxWidth: width }}
@@ -210,13 +267,16 @@ export function Modal({ open, onClose, title, children, width = 460 }: ModalProp
             transition={modalTransition}
           >
             <div className="flex items-center justify-between px-5 py-4 border-b border-[rgba(255,255,255,0.06)] sticky top-0 bg-[#14171F] z-10">
-              <h3 className="font-bold text-[#E8E9ED]" style={{ fontFamily: displayFont }}>{title}</h3>
-
-              <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-white/5 flex items-center justify-center text-gray-400">
+              <h3 className="font-bold text-[#E8E9ED]" style={{ fontFamily: displayFont }}>
+                {title}
+              </h3>
+              <button
+                onClick={onClose}
+                className="w-8 h-8 rounded-lg hover:bg-white/5 flex items-center justify-center text-gray-400"
+              >
                 <X size={17} />
               </button>
             </div>
-
             <div className="p-5">{children}</div>
           </motion.div>
         </div>
@@ -250,12 +310,23 @@ interface EmptyStateProps {
 
 export function EmptyState({ icon: Icon, title, note }: EmptyStateProps) {
   return (
-    <div className="text-center py-14 px-5">
-      <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-3 text-gray-400">
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="text-center py-14 px-5"
+    >
+      <motion.div
+        animate={{
+          y: [0, -6, 0],
+          transition: { duration: 2, repeat: Infinity, ease: "easeInOut" },
+        }}
+        className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-3 text-gray-400"
+      >
         <Icon size={20} />
-      </div>
+      </motion.div>
       <div className="text-sm font-semibold text-[#E8E9ED]">{title}</div>
       {note && <div className="text-xs text-[#8B8F9C] mt-1">{note}</div>}
-    </div>
+    </motion.div>
   );
 }

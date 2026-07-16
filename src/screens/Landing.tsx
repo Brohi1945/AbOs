@@ -1,9 +1,10 @@
+
 import React from "react";
 import { ArrowRight, Sparkles, ShoppingBag, Star } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area } from "recharts";
 import { displayFont, bodyFont } from "../lib/theme";
 import { salesTrend } from "../lib/seedData";
-import { Button } from "../components/ui.jsx";
+import { Button } from "../components/ui";
 
 export default function LandingScreen({ onLogin, onBrowseStore }) {
   return (

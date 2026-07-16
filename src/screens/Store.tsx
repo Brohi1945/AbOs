@@ -6,7 +6,7 @@ import { displayFont, bodyFont } from "../lib/theme";
 import { CATEGORIES } from "../lib/seedData";
 import { genId, money } from "../lib/utils";
 import { callClaude, parseAssistantReply } from "../lib/aiHelpers";
-import { Card, Badge, StatusBadge, Button, Drawer, Modal, Field, inputCls, EmptyState } from "../components/ui.jsx";
+import { Card, Badge, StatusBadge, Button, Drawer, Modal, Field, inputCls, EmptyState } from "../components/ui";
 
 function CustomerAssistantWidget({ products, placedOrders, onPlaceOrder }) {
   const [open, setOpen] = useState(false);
@@ -22,7 +22,7 @@ function CustomerAssistantWidget({ products, placedOrders, onPlaceOrder }) {
 
   useEffect(() => { if (open) endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, open, loading]);
 
-  const send = async (text) => {
+  const send = async (text = undefined) => {
     const q = (text ?? input).trim();
     if (!q || sendingRef.current) return;
     sendingRef.current = true;

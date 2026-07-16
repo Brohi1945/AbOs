@@ -1,6 +1,6 @@
-import { Clock, XCircle, CheckCircle2, PackageCheck } from "lucide-react";
-
-export const CATEGORIES = ["Groceries", "Beverages", "Snacks", "Household", "Personal Care"];
+// Categories aur order-status metadata ab ek central config file mein
+// hain — badalna ho to src/config/app.config.ts kholo.
+export { CATEGORIES, STATUS_META } from "../config/app.config";
 
 export const seedProducts = () => [
   { id: "P001", barcode: "8901030895551", name: "Basmati Rice 5kg", category: "Groceries", price: 1450, cost: 1100, stock: 42, threshold: 10, color: "bg-amber-100 text-amber-700", specs: "Premium long-grain basmati rice, 5kg pack, aged for extra aroma. Goes well with Cooking Oil for daily cooking." },
@@ -20,13 +20,6 @@ export const seedCustomers = () => [
   { id: "C004", name: "Usman Tariq", phone: "0333-9988776", email: "usman.t@mail.com", orders: 21, spent: 76500, lastOrder: "2026-07-12" },
   { id: "C005", name: "Hina Raza", phone: "0312-4455667", email: "hina.r@mail.com", orders: 1, spent: 1450, lastOrder: "2026-07-01" },
 ];
-
-export const STATUS_META = {
-  pending: { label: "Pending", icon: Clock, cls: "bg-amber-50 text-amber-700 border-amber-200" },
-  confirmed: { label: "Confirmed", icon: CheckCircle2, cls: "bg-indigo-50 text-indigo-700 border-indigo-200" },
-  delivered: { label: "Delivered", icon: PackageCheck, cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  cancelled: { label: "Cancelled", icon: XCircle, cls: "bg-red-50 text-red-700 border-red-200" },
-};
 
 export const seedOrders = () => [
   { id: "ORD-1042", customer: "Usman Tariq", items: [{ name: "Basmati Rice 5kg", qty: 2 }, { name: "Cooking Oil 1L", qty: 1 }], total: 3520, status: "pending", date: "2026-07-13 10:22", channel: "Store" },

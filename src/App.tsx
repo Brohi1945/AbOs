@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { bodyFont } from "./lib/theme";
 import { seedProducts, seedOrders, seedCustomers } from "./lib/seedData";
@@ -14,6 +15,9 @@ import StoreScreen from "./screens/Store";
 export default function BusinessAutomationSystem() {
   const [screenStack, setScreenStack] = useState(["landing"]);
   const screen = screenStack[screenStack.length - 1];
+  const isAdmin = screen.startsWith("admin:");
+  const adminSection = isAdmin ? screen.slice(6) : "dashboard";
+
   const [products, setProducts] = useState(seedProducts());
   const [orders, setOrders] = useState(seedOrders());
   const [placedOrders, setPlacedOrders] = useState([]);
@@ -89,10 +93,12 @@ export default function BusinessAutomationSystem() {
         <LandingScreen onLogin={() => navigate("login")} onBrowseStore={() => navigate("store")} />
       )}
       {screen === "login" && (
-        <LoginScreen onBack={goBack} onLoginAs={(role) => navigate(role === "admin" ? "admin" : "store")} />
+        <LoginScreen onBack={goBack} onLoginAs={(role) => navigate(role === "admin" ? "admin:dashboard" : "store")} />
       )}
-      {screen === "admin" && (
+      {isAdmin && (
         <AdminApp
+          section={adminSection}
+          onSectionChange={(s) => navigate("admin:" + s)}
           onLogout={() => resetTo("landing")}
           onGoStore={() => navigate("store")}
           products={products}

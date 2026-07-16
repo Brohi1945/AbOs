@@ -3,6 +3,12 @@
 //  Modal, Drawer, StatCard grids, etc. yahan se import karte hain
 //  instead of apna initial/animate/exit likhne ke.
 // ============================================================
+
+// ============================================================
+//  Reusable framer-motion VARIANTS.
+//  Modal, Drawer, StatCard grids, etc. yahan se import karte hain
+//  instead of apna initial/animate/exit likhne ke.
+// ============================================================
 import { DURATION, EASE, STAGGER } from "./config";
 import type { Variants, Transition } from "framer-motion";
 

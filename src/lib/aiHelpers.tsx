@@ -1,0 +1,69 @@
+import React from "react";
+import { Loader2 } from "lucide-react";
+
+interface ChatMessage {
+  role: string;
+  text: string;
+}
+
+interface AssistantAction {
+  type: string;
+  items?: { productId: string; qty: number }[];
+  customer?: { name: string; phone: string; address: string };
+}
+
+export async function callClaude(systemPrompt: string, history: ChatMessage[], userText: string): Promise<string> {
+  const apiMessages = [
+    ...history
+      .filter((m) => m.role === "user" || m.role === "bot")
+      .map((m) => ({ role: m.role === "bot" ? "assistant" : "user", content: m.text })),
+    { role: "user", content: userText },
+  ];
+
+  const response = await fetch("/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      systemPrompt,
+      messages: apiMessages,
+    }),
+  });
+
+  if (!response.ok) throw new Error(`API error ${response.status}`);
+  const data = await response.json();
+  const text = (data.content || [])
+    .filter((block: any) => block.type === "text")
+    .map((block: any) => block.text)
+    .join("\n")
+    .trim();
+  return text || "I couldn't find a good answer for that — try rephrasing?";
+}
+
+export function parseAssistantReply(raw: string): { reply: string; action: AssistantAction | null } {
+  let cleaned = (raw || "").trim();
+  cleaned = cleaned.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "");
+
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start !== -1 && end !== -1 && end > start) {
+    const jsonSlice = cleaned.slice(start, end + 1);
+    try {
+      const parsed = JSON.parse(jsonSlice);
+      if (parsed && typeof parsed === "object" && "reply" in parsed) {
+        return { reply: parsed.reply, action: parsed.action || null };
+      }
+    } catch (e) {
+      // fall through to plain text
+    }
+  }
+  return { reply: raw, action: null };
+}
+
+export function TypingDots() {
+  return (
+    <div className="flex items-center gap-1 px-4 py-3 bg-[#14171F] border border-[rgba(255,255,255,0.06)] rounded-2xl rounded-bl-md w-fit">
+      <Loader2 size={13} className="animate-spin text-[#C9A44C]" />
+      <span className="text-xs text-[#8B8F9C]">Thinking…</span>
+    </div>
+  );
+}

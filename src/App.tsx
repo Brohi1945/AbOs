@@ -5,7 +5,7 @@ import { genId } from "./lib/utils";
 import { notifyNewOrder, notifyLowStock } from "./lib/notify";
 import {
   fetchProducts, insertOrder, updateProductRow, fetchOrders, seedIfEmpty,
-} from "./supabaseClient.js";
+} from "./supabaseClient";
 import LandingScreen from "./screens/Landing";
 import LoginScreen from "./screens/Login";
 import AdminApp from "./screens/AdminApp";
@@ -19,25 +19,15 @@ export default function BusinessAutomationSystem() {
   const [placedOrders, setPlacedOrders] = useState([]);
   const [customers, setCustomers] = useState(seedCustomers());
 
-  // Push a new screen onto the stack (forward navigation) and register a
-  // matching browser history entry, so the hardware/software back button
-  // has something of ours to go back to instead of leaving the app.
   const navigate = (next) => {
     setScreenStack((s) => [...s, next]);
     window.history.pushState({ depth: screenStack.length + 1 }, "");
   };
 
-  // Pop back to the previous screen (used by in-app "back" buttons). This
-  // only moves browser history backward — the popstate listener below is
-  // the single place that actually pops screenStack, so in-app back button
-  // taps and the hardware/software back button behave identically and
-  // never double-pop.
   const goBack = () => {
     window.history.back();
   };
 
-  // Full reset (used by "Log out") — clears the stack back to the start
-  // rather than just going back one step.
   const resetTo = (start) => {
     setScreenStack([start]);
     window.history.replaceState({ depth: 1 }, "");

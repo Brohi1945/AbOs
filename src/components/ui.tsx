@@ -1,7 +1,10 @@
 import React from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { X, TrendingUp, TrendingDown, LucideIcon } from "lucide-react";
 import { displayFont } from "../lib/theme";
 import { STATUS_META } from "../lib/seedData";
+import { backdropFade, modalScale, drawerSlideRight, backdropTransition, modalTransition, drawerTransition } from "../animations/variants";
+import { useCountUp } from "../animations/useCountUp";
 
 type ButtonVariant = "primary" | "secondary" | "success" | "danger" | "ghost" | "glassOutline" | "glassSolid";
 type ButtonSize = "sm" | "md" | "lg";
@@ -104,11 +107,13 @@ export function StatCard({ icon: Icon, label, value, delta = null, tone = "indig
     red: "bg-red-500/10 text-red-400",
   };
 
+  const animatedValue = useCountUp(value);
+
   return (
     <Card className="flex items-start justify-between">
       <div>
         <div className="text-xs font-medium text-[#8B8F9C] mb-1.5">{label}</div>
-        <div className="text-2xl font-bold text-[#E8E9ED]" style={{ fontFamily: displayFont }}>{value}</div>
+        <div className="text-2xl font-bold text-[#E8E9ED]" style={{ fontFamily: displayFont }}>{animatedValue}</div>
 
         {delta && (
           <div className={`flex items-center gap-1 mt-2 text-xs font-semibold ${delta.startsWith("-") ? "text-red-500" : "text-green-400"}`}>
@@ -133,27 +138,42 @@ interface DrawerProps {
 }
 
 export function Drawer({ open, onClose, title, children, width = 420 }: DrawerProps) {
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-[200]">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+    <AnimatePresence>
+      {open && (
+        <div className="fixed inset-0 z-[200]">
+          <motion.div
+            className="absolute inset-0 bg-black/60"
+            variants={backdropFade}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={backdropTransition}
+            onClick={onClose}
+          />
 
-      <div
-        className="absolute top-0 right-0 bottom-0 bg-[#14171F] shadow-2xl overflow-y-auto"
-        style={{ width: "92%", maxWidth: width }}
-      >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[rgba(255,255,255,0.06)] sticky top-0 bg-[#14171F] z-10">
-          <h3 className="font-bold text-[#E8E9ED]" style={{ fontFamily: displayFont }}>{title}</h3>
+          <motion.div
+            className="absolute top-0 right-0 bottom-0 bg-[#14171F] shadow-2xl overflow-y-auto"
+            style={{ width: "92%", maxWidth: width }}
+            variants={drawerSlideRight}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={drawerTransition}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[rgba(255,255,255,0.06)] sticky top-0 bg-[#14171F] z-10">
+              <h3 className="font-bold text-[#E8E9ED]" style={{ fontFamily: displayFont }}>{title}</h3>
 
-          <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-white/5 flex items-center justify-center text-gray-400">
-            <X size={17} />
-          </button>
+              <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-white/5 flex items-center justify-center text-gray-400">
+                <X size={17} />
+              </button>
+            </div>
+
+            <div className="p-5">{children}</div>
+          </motion.div>
         </div>
-
-        <div className="p-5">{children}</div>
-      </div>
-    </div>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -166,24 +186,42 @@ interface ModalProps {
 }
 
 export function Modal({ open, onClose, title, children, width = 460 }: ModalProps) {
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+    <AnimatePresence>
+      {open && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          <motion.div
+            className="absolute inset-0 bg-black/60"
+            variants={backdropFade}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={backdropTransition}
+            onClick={onClose}
+          />
 
-      <div className="relative bg-[#14171F] rounded-2xl shadow-2xl w-full max-h-[88vh] overflow-y-auto" style={{ maxWidth: width }}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[rgba(255,255,255,0.06)] sticky top-0 bg-[#14171F] z-10">
-          <h3 className="font-bold text-[#E8E9ED]" style={{ fontFamily: displayFont }}>{title}</h3>
+          <motion.div
+            className="relative bg-[#14171F] rounded-2xl shadow-2xl w-full max-h-[88vh] overflow-y-auto"
+            style={{ maxWidth: width }}
+            variants={modalScale}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={modalTransition}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[rgba(255,255,255,0.06)] sticky top-0 bg-[#14171F] z-10">
+              <h3 className="font-bold text-[#E8E9ED]" style={{ fontFamily: displayFont }}>{title}</h3>
 
-          <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-white/5 flex items-center justify-center text-gray-400">
-            <X size={17} />
-          </button>
+              <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-white/5 flex items-center justify-center text-gray-400">
+                <X size={17} />
+              </button>
+            </div>
+
+            <div className="p-5">{children}</div>
+          </motion.div>
         </div>
-
-        <div className="p-5">{children}</div>
-      </div>
-    </div>
+      )}
+    </AnimatePresence>
   );
 }
 

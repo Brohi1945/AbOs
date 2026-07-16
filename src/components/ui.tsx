@@ -1,9 +1,10 @@
+
 import React from "react";
 import { X, TrendingUp, TrendingDown } from "lucide-react";
 import { displayFont } from "../lib/theme";
 import { STATUS_META } from "../lib/seedData";
 
-export function Button({ children, variant = "primary", size = "md", icon: Icon, className = "", ...props }) {
+export function Button({ children, variant = "primary", size = "md", icon: Icon = null, className = "", ...props }) {
   const base = "inline-flex items-center justify-center gap-1.5 font-semibold rounded-xl transition active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100 whitespace-nowrap";
   const sizes = { sm: "text-xs px-3 py-1.5", md: "text-sm px-4 py-2.5", lg: "text-sm px-5 py-3" };
 
@@ -25,7 +26,7 @@ export function Button({ children, variant = "primary", size = "md", icon: Icon,
   );
 }
 
-export function Card({ children, className = "", noPad = false, style }) {
+export function Card({ children, className = "", noPad = false, style = undefined }) {
   return (
     <div
       style={style}
@@ -57,7 +58,7 @@ export function StatusBadge({ status }) {
   );
 }
 
-export function StatCard({ icon: Icon, label, value, delta, tone = "indigo" }) {
+export function StatCard({ icon: Icon, label, value, delta = null, tone = "indigo" }) {
   const tones = {
     indigo: "bg-indigo-500/10 text-indigo-400",
     green: "bg-green-500/10 text-green-400",

@@ -30,13 +30,37 @@ export default function BusinessAutomationSystem() {
     });
   };
 
-  // Lateral move: switches the current top of the stack (e.g. Dashboard -> Orders
-  // inside the admin panel) WITHOUT growing the browser history stack. Only real
-  // screen transitions (login -> admin, admin -> store, etc.) should push a new
-  // history entry; otherwise the back-stack balloons on every sidebar click and
-  // can desync from React state after a mobile tab reload/suspend, causing the
-  // hardware back button to jump straight past Dashboard to Login.
+  // Admin sections are two-tiered for history purposes: "dashboard" is the base
+  // level for the whole admin panel, and any other section sits one level deeper.
+  // - dashboard -> subsection: a real step deeper, so it pushes a history entry.
+  // - subsection -> dashboard: a real step up, so it goes through goBack()/
+  //   window.history.back() — the exact same path the hardware back button uses.
+  //   This is what keeps the in-app "back to dashboard" control and the phone's
+  //   back button in sync: they now do the literal same thing.
+  // - subsection -> subsection (e.g. Orders -> Inventory via the sidebar) is a
+  //   lateral move and just replaces the current entry, so the back-stack
+  //   doesn't balloon on every sidebar click.
   const switchSection = (next) => {
+    const current = screenStack[screenStack.length - 1];
+    const isCurrentDashboard = current === "admin:dashboard";
+    const isNextDashboard = next === "admin:dashboard";
+
+    if (isCurrentDashboard && !isNextDashboard) {
+      setScreenStack((s) => {
+        const ns = [...s, next];
+        window.history.pushState({ depth: ns.length }, "");
+        return ns;
+      });
+      return;
+    }
+
+    if (!isCurrentDashboard && isNextDashboard) {
+      // Let the popstate handler below pop the stack, so this behaves
+      // identically to pressing the hardware/browser back button.
+      window.history.back();
+      return;
+    }
+
     setScreenStack((s) => {
       const ns = [...s.slice(0, -1), next];
       window.history.replaceState({ depth: ns.length }, "");

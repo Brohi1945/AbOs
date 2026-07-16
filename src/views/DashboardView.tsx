@@ -1,9 +1,12 @@
 import React, { useMemo } from "react";
+import { motion } from "framer-motion";
 import { ShoppingCart, Users, Wallet, AlertTriangle } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from "recharts";
 import { displayFont } from "../lib/theme";
 import { money, todayLabel, computeWeeklyTrend } from "../lib/utils";
 import { Card, Badge, StatCard, StatusBadge } from "../components/ui";
+import { staggerContainer, fadeSlideUp } from "../animations/variants";
+import { CHART_ANIMATION } from "../animations/config";
 
 interface DashboardViewProps {
   orders: any[];
@@ -35,12 +38,25 @@ export default function DashboardView({ orders, products, customers, onGoTo }: D
         <p className="text-sm text-[#8B8F9C]">{todayLabel()} — here's how the business is doing.</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={Wallet} label="Total Sales" value={money(totalSales)} delta={salesDelta} tone="indigo" />
-        <StatCard icon={ShoppingCart} label="Orders" value={orders.length} delta={ordersToday > 0 ? `+${ordersToday} today` : null} tone="green" />
-        <StatCard icon={Users} label="Customers" value={customers.length} tone="indigo" />
-        <StatCard icon={AlertTriangle} label="Low Stock Alerts" value={lowStock.length} delta={lowStock.length > 0 ? "Needs attention" : "All good"} tone="amber" />
-      </div>
+      <motion.div
+        className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+        variants={staggerContainer}
+        initial="initial"
+        animate="animate"
+      >
+        <motion.div variants={fadeSlideUp}>
+          <StatCard icon={Wallet} label="Total Sales" value={money(totalSales)} delta={salesDelta} tone="indigo" />
+        </motion.div>
+        <motion.div variants={fadeSlideUp}>
+          <StatCard icon={ShoppingCart} label="Orders" value={orders.length} delta={ordersToday > 0 ? `+${ordersToday} today` : null} tone="green" />
+        </motion.div>
+        <motion.div variants={fadeSlideUp}>
+          <StatCard icon={Users} label="Customers" value={customers.length} tone="indigo" />
+        </motion.div>
+        <motion.div variants={fadeSlideUp}>
+          <StatCard icon={AlertTriangle} label="Low Stock Alerts" value={lowStock.length} delta={lowStock.length > 0 ? "Needs attention" : "All good"} tone="amber" />
+        </motion.div>
+      </motion.div>
 
       <div className="grid lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2">
@@ -65,7 +81,7 @@ export default function DashboardView({ orders, products, customers, onGoTo }: D
                   labelStyle={{ color: "#8B8F9C" }}
                   itemStyle={{ color: "#E8E9ED" }}
                 />
-                <Area type="monotone" dataKey="sales" stroke="#C9A44C" strokeWidth={2.5} fill="url(#dashGrad)" />
+                <Area type="monotone" dataKey="sales" stroke="#C9A44C" strokeWidth={2.5} fill="url(#dashGrad)" {...CHART_ANIMATION} />
               </AreaChart>
             </ResponsiveContainer>
           </div>

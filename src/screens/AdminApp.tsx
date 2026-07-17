@@ -19,6 +19,7 @@ import DashboardView from "../views/DashboardView";
 import OrdersView from "../views/OrdersView";
 import InventoryView from "../views/InventoryView";
 import CustomersView from "../views/CustomersView";
+import WaitlistView from "../views/WaitlistView";
 import POSView from "../views/POSView";
 import AccountingView from "../views/AccountingView";
 import BusinessIntelligenceView from "../views/BusinessIntelligenceView";
@@ -185,6 +186,8 @@ export default function AdminApp({
         );
       case "customers":
         return <CustomersView customers={customers} orders={orders} onAdd={handleAddCustomer} />;
+      case "waitlist":
+        return <WaitlistView products={products} />;
       case "pos":
         return <POSView products={products} onCheckout={handlePOSCheckout} />;
       case "accounting":

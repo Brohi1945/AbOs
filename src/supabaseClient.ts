@@ -67,6 +67,67 @@ export async function updateOrderStatusRow(id, status) {
   if (error) console.error("updateOrderStatusRow error:", error.message);
 }
 
+// ---- Waitlist ------------------------------------------------
+// (requires the `waitlist` table + `reserved_stock` column on `products` —
+// see supabase/migrations/0001_waitlist.sql)
+
+export async function fetchWaitlist(productId) {
+  if (!isReady()) return [];
+  const { data, error } = await supabase
+    .from("waitlist")
+    .select("*")
+    .eq("product_id", productId)
+    .order("joined_at", { ascending: true });
+  if (error) {
+    console.error("fetchWaitlist error:", error.message);
+    return [];
+  }
+  return data;
+}
+
+export async function fetchAllWaitlist() {
+  if (!isReady()) return [];
+  const { data, error } = await supabase
+    .from("waitlist")
+    .select("*")
+    .order("joined_at", { ascending: true });
+  if (error) {
+    console.error("fetchAllWaitlist error:", error.message);
+    return [];
+  }
+  return data;
+}
+
+export async function insertWaitlistEntry(entry) {
+  if (!isReady()) return null;
+  const { data, error } = await supabase.from("waitlist").insert(entry).select().single();
+  if (error) {
+    console.error("insertWaitlistEntry error:", error.message);
+    return null;
+  }
+  return data;
+}
+
+export async function updateWaitlistRow(id, fields) {
+  if (!isReady()) return;
+  const { error } = await supabase.from("waitlist").update(fields).eq("id", id);
+  if (error) console.error("updateWaitlistRow error:", error.message);
+}
+
+export async function fetchExpiredReservations() {
+  if (!isReady()) return [];
+  const { data, error } = await supabase
+    .from("waitlist")
+    .select("*")
+    .eq("status", "notified")
+    .lt("reserve_expires_at", new Date().toISOString());
+  if (error) {
+    console.error("fetchExpiredReservations error:", error.message);
+    return [];
+  }
+  return data;
+}
+
 export async function seedIfEmpty(seedProductsList, seedOrdersList) {
   if (!isReady()) return;
   const { count: productCount } = await supabase

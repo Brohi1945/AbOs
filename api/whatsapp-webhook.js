@@ -362,10 +362,19 @@ export default async function handler(req, res) {
     const token = req.query["hub.verify_token"];
     const challenge = req.query["hub.challenge"];
 
-    if (mode === "subscribe" && token === process.env.WHATSAPP_VERIFY_TOKEN) {
+    const envToken = (process.env.WHATSAPP_VERIFY_TOKEN || "").trim();
+    const receivedToken = (token || "").trim();
+
+    if (mode === "subscribe" && receivedToken === envToken) {
       return res.status(200).send(challenge);
     }
-    console.error("verify_token mismatch");
+    console.error("verify_token mismatch debug:", {
+      envIsSet: !!process.env.WHATSAPP_VERIFY_TOKEN,
+      envLength: envToken.length,
+      receivedLength: receivedToken.length,
+      envFirst2: envToken.slice(0, 2),
+      receivedFirst2: receivedToken.slice(0, 2),
+    });
     return res.status(403).send("Forbidden");
   }
 

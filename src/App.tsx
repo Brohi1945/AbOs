@@ -11,6 +11,7 @@ import {
   fetchOrders,
   seedIfEmpty,
 } from "./supabaseClient";
+import { expireStaleReservations, convertWaitlistIfMatched, joinWaitlist } from "./lib/waitlist";
 import LandingScreen from "./screens/Landing";
 import LoginScreen from "./screens/Login";
 import AdminApp from "./screens/AdminApp";
@@ -80,12 +81,20 @@ export default function BusinessAutomationSystem() {
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
+  const updateProductField = (id, fields) => {
+    setProducts((ps) => ps.map((p) => (p.id === id ? { ...p, ...fields } : p)));
+  };
+
   useEffect(() => {
     (async () => {
       await seedIfEmpty(seedProducts(), seedOrders());
       const [liveProducts, liveOrders] = await Promise.all([fetchProducts(), fetchOrders()]);
       if (liveProducts) setProducts(liveProducts);
       if (liveOrders) setOrders(liveOrders);
+      // 48hr se expire ho chuki waitlist reservations release karo aur
+      // agle customer ko offer karo. Koi cron abhi nahi hai isliye yeh
+      // sirf app open hone par check hota hai (prototype ke liye theek).
+      if (liveProducts) await expireStaleReservations(liveProducts, updateProductField);
     })();
   }, []);
 
@@ -123,6 +132,19 @@ export default function BusinessAutomationSystem() {
         ...cs,
       ];
     });
+    // Agar yeh order kisi waitlist reservation se match karta hai
+    // (same product + same phone), to us reservation ko "converted"
+    // mark karo aur reserved stock free karo.
+    if (order.phone) {
+      order.items.forEach((line) => {
+        const product = products.find((p) => p.id === line.productId);
+        if (product) convertWaitlistIfMatched(product, order.phone, order.id, updateProductField);
+      });
+    }
+  };
+
+  const handleJoinWaitlist = async (product, customerName, phone, qty = 1) => {
+    return joinWaitlist({ product, customerName, phone, qty });
   };
 
   return (
@@ -168,6 +190,7 @@ export default function BusinessAutomationSystem() {
           onLogin={() => navigate("login")}
           placedOrders={placedOrders}
           onPlaceOrder={handlePlaceOrder}
+          onJoinWaitlist={handleJoinWaitlist}
         />
       )}
     </div>

@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sidebar, Topbar } from "../components/layout";
@@ -6,6 +5,7 @@ import { bodyFont } from "../lib/theme";
 import { money, genId } from "../lib/utils";
 import { seedCampaigns } from "../lib/seedData";
 import { notifyLowStock } from "../lib/notify";
+import { checkAndNotifyWaitlist } from "../lib/waitlist";
 import { NAV_ITEMS } from "../config/app.config";
 import {
   insertProduct,
@@ -85,8 +85,20 @@ export default function AdminApp({
       stock: Number(form.stock) || 0,
       threshold: Number(form.threshold) || 10,
     };
-    setProducts((ps) => ps.map((p) => (p.id === id ? { ...p, ...fields } : p)));
+    const previous = products.find((p) => p.id === id);
+    const updatedProduct = { ...previous, ...fields };
+    setProducts((ps) => ps.map((p) => (p.id === id ? updatedProduct : p)));
     updateProductRow(id, fields);
+
+    // Stock badha (restock) to waitlist par bethe customers ko FIFO order
+    // mein notify + reserve karo.
+    if (previous && updatedProduct.stock > previous.stock) {
+      checkAndNotifyWaitlist(updatedProduct, updateProductField);
+    }
+  };
+
+  const updateProductField = (id, fields) => {
+    setProducts((ps) => ps.map((p) => (p.id === id ? { ...p, ...fields } : p)));
   };
 
   const handleDeleteProduct = (id) => {

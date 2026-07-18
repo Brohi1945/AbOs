@@ -17,14 +17,20 @@
 //  2. Retry-until-it-actually-speaks — Android Chrome sometimes
 //     silently drops a speak() call: no error, no event, nothing.
 //     Every attempt now has a watchdog: if `onstart` doesn't fire
-//     within ~500ms, the engine is assumed jammed, is fully reset,
+//     within ~600ms, the engine is assumed jammed, is fully reset,
 //     and the same text is retried (up to a few attempts with
 //     backoff) instead of just giving up and falling back to text-only.
-//  3. Keeps the existing Android-specific workarounds: a short delay
+//  3. If ALL retries are exhausted, a visible toast is shown instead of
+//     failing silently. Common real causes at that point are device-side,
+//     not app-side: Android's media volume slider muted (separate from
+//     ringer volume), the on-device TTS voice pack not downloaded, or
+//     the tab having lost audio focus in the background.
+//  4. Keeps the existing Android-specific workarounds: a short delay
 //     after cancel() before speaking again, and a pause/resume
 //     "keepAlive" nudge for the ~15s auto-pause bug on long replies.
 // ============================================================
 import { useEffect, useRef, useState, useCallback } from "react";
+import { toastError } from "./toast";
 
 interface UseVoiceOutputOptions {
   lang?: string;
@@ -202,8 +208,13 @@ export function useVoiceOutput({
   const scheduleRetryOrGiveUp = useCallback((text: string, myRequestId: number) => {
     if (myRequestId !== requestIdRef.current) return;
     if (attemptCountRef.current >= MAX_ATTEMPTS) {
-      // Genuinely out of options this time — stop quietly. The text reply
-      // is still visible on screen either way.
+      // Genuinely out of options this time. Previously this failed
+      // completely silently — the text reply still showed on screen, but
+      // there was no way to tell "voice didn't speak" apart from "voice
+      // wasn't supposed to speak this time." Surface it so it's obvious
+      // this is a device/browser issue (volume, TTS voice pack, background
+      // tab audio focus) and not the app silently ignoring the toggle.
+      toastError("Voice out nahi ho saka — device ka media volume aur Text-to-Speech voice pack check karein.");
       setIsSpeaking(false);
       attemptCountRef.current = 0;
       return;

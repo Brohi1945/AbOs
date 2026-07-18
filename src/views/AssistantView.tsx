@@ -6,6 +6,7 @@ import { callClaude, parseAssistantReply, TypingDots } from "../lib/aiHelpers";
 import { computeWeeklyTrend, computeProductInsights } from "../lib/utils";
 import { useVoiceInput } from "../lib/useVoiceInput";
 import { useVoiceOutput } from "../lib/useVoiceOutput";
+import { detectVoiceToggleCommand, detectNavigationCommand } from "../lib/voiceCommands";
 import { toastError } from "../lib/toast";
 import { Card, Button, inputCls } from "../components/ui";
 
@@ -29,6 +30,10 @@ interface AssistantViewProps {
   onAddCustomer: (customer: any) => void;
   onAddCampaign: (campaign: any) => void;
   onCreateOrder: (order: any) => void;
+  // Optional — lets voice commands like "inventory kholo" actually switch
+  // the sidebar section. If not passed, navigation commands are simply
+  // not intercepted and fall through to the LLM like a normal question.
+  onSectionChange?: (key: string) => void;
 }
 
 export default function AssistantView({
@@ -43,6 +48,7 @@ export default function AssistantView({
   onAddCustomer,
   onAddCampaign,
   onCreateOrder,
+  onSectionChange,
 }: AssistantViewProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -90,6 +96,59 @@ export default function AssistantView({
   const send = async (text?: string) => {
     const q = (text ?? input).trim();
     if (!q || sendingRef.current) return;
+
+    // "voice mein baat karo" / "voice off karo" etc. are UI commands, not
+    // questions for the AI — the model has no way to actually flip our
+    // speaker toggle, so previously it just apologized in text ("main sirf
+    // text mein jawab de sakta hoon"). Handle these locally instead of
+    // sending them to the LLM.
+    const voiceCommand = detectVoiceToggleCommand(q);
+    if (voiceCommand) {
+      setMessages((m) => [...m, { role: "user", text: q }]);
+      setInput("");
+      if (voiceCommand === "enable") {
+        if (!ttsSupported) {
+          setMessages((m) => [...m, { role: "bot", text: "Maaf kijiye, is browser mein voice output support nahi hai." }]);
+        } else if (voiceEnabled) {
+          addBotMessage("Voice pehle se hi on hai.");
+        } else {
+          // Called directly inside this click/enter-key gesture so it
+          // "unlocks" audio on Android Chrome before any async gap.
+          speakUnlocked("Voice on hai, ab main jawab bol kar dunga.");
+          toggleVoiceEnabled();
+          setMessages((m) => [...m, { role: "bot", text: "Voice on kar diya — ab main bol kar jawab dunga." }]);
+        }
+      } else {
+        if (voiceEnabled) {
+          toggleVoiceEnabled();
+          setMessages((m) => [...m, { role: "bot", text: "Theek hai, voice off kar diya." }]);
+        } else {
+          addBotMessage("Voice pehle se hi off hai.");
+        }
+      }
+      return;
+    }
+
+    // "inventory kholo" / "business intelligence par le jao" etc. — switch
+    // sidebar sections directly instead of sending them to the LLM (which
+    // has no way to actually change what's on screen). Only handled if the
+    // parent passed onSectionChange down.
+    if (onSectionChange) {
+      const nav = detectNavigationCommand(q);
+      if (nav) {
+        setMessages((m) => [...m, { role: "user", text: q }]);
+        setInput("");
+        const confirmText = `${nav.label} khol raha hoon…`;
+        addBotMessage(confirmText);
+        // Small delay so the confirmation is actually visible/audible
+        // before this whole view unmounts (switching sections unmounts
+        // AssistantView, since it's only rendered for the "assistant"
+        // section).
+        window.setTimeout(() => onSectionChange(nav.key), 700);
+        return;
+      }
+    }
+
     sendingRef.current = true;
     const history = messages;
     setMessages((m) => [...m, { role: "user", text: q }]);

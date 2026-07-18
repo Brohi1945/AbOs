@@ -137,6 +137,56 @@ export default function AdminApp({
     ]);
   };
 
+  // AI assistant se banaya gaya manual order (e.g. phone/walk-in sale jo
+  // owner ne assistant ko bataya). action shape: { items: [{productId, qty}],
+  // customer, phone, channel, status }.
+  const handleCreateOrder = (action) => {
+    const lines = (action.items || [])
+      .map((it) => {
+        const product = products.find((p) => p.id === it.productId);
+        return product ? { productId: product.id, name: product.name, qty: Number(it.qty) || 1, price: product.price } : null;
+      })
+      .filter(Boolean);
+    if (!lines.length) return;
+
+    products.forEach((p) => {
+      const line = lines.find((l) => l.productId === p.id);
+      if (!line) return;
+      const newStock = Math.max(0, p.stock - line.qty);
+      if (newStock <= p.threshold && p.stock > p.threshold) notifyLowStock(p, newStock);
+    });
+    setProducts((ps) =>
+      ps.map((p) => {
+        const line = lines.find((l) => l.productId === p.id);
+        if (line) updateProductRow(p.id, { stock: Math.max(0, p.stock - line.qty) });
+        return line ? { ...p, stock: Math.max(0, p.stock - line.qty) } : p;
+      })
+    );
+
+    const total = lines.reduce((s, l) => s + l.price * l.qty, 0);
+    const newOrder = {
+      id: genId("ORD"),
+      customer: action.customer || "Walk-in customer",
+      phone: action.phone || "",
+      items: lines.map((l) => ({ productId: l.productId, name: l.name, qty: l.qty })),
+      total,
+      status: action.status || "pending",
+      date: new Date().toLocaleString(),
+      channel: action.channel || "AI Assistant",
+    };
+    setOrders((os) => [newOrder, ...os]);
+    insertOrder(newOrder);
+
+    setCustomers((cs) => {
+      const exists = cs.some((c) => c.name.toLowerCase() === (newOrder.customer || "").toLowerCase());
+      if (exists || !newOrder.customer) return cs;
+      return [
+        { id: genId("C"), name: newOrder.customer, phone: newOrder.phone || "", email: "", orders: 0, spent: 0, lastOrder: newOrder.date },
+        ...cs,
+      ];
+    });
+  };
+
   const handlePOSCheckout = (cartLines) => {
     products.forEach((p) => {
       const line = cartLines.find((l) => l.productId === p.id);
@@ -201,10 +251,15 @@ export default function AdminApp({
           <AssistantView
             orders={orders}
             products={products}
+            customers={customers}
+            campaigns={campaigns}
             onAddProduct={handleAddProduct}
             onEditProduct={handleEditProduct}
             onDeleteProduct={handleDeleteProduct}
             onUpdateStatus={handleUpdateStatus}
+            onAddCustomer={handleAddCustomer}
+            onAddCampaign={handleAddCampaign}
+            onCreateOrder={handleCreateOrder}
           />
         );
       default:

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Toaster } from "react-hot-toast";
-import { bodyFont } from "./lib/theme";
+import { bodyFont, fontImportUrl, ThemeProvider } from "./theme";
 import { seedProducts, seedOrders, seedCustomers } from "./lib/seedData";
 import { genId } from "./lib/utils";
 import { notifyNewOrder, notifyLowStock } from "./lib/notify";
@@ -148,12 +148,13 @@ export default function BusinessAutomationSystem() {
   };
 
   return (
+    <ThemeProvider>
     <div style={{ fontFamily: bodyFont }}>
       <Toaster position={TOAST_POSITION} gutter={8} />
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600&display=swap');
-        input::placeholder, textarea::placeholder { color: #94A3B8; }
+        @import url('${fontImportUrl}');
+        input::placeholder, textarea::placeholder { color: var(--color-text-muted); }
         @keyframes drawerIn { from { transform: translateX(24px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         .animate-drawer-in { animation: drawerIn 0.22s ease-out; }
         @keyframes modalIn { from { transform: scale(0.97); opacity: 0; } to { transform: scale(1); opacity: 1; } }
@@ -194,5 +195,6 @@ export default function BusinessAutomationSystem() {
         />
       )}
     </div>
+    </ThemeProvider>
   );
 }

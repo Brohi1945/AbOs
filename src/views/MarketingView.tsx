@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Megaphone, Plus, Send, Mail, MessageSquare, Smartphone, Eye, MousePointerClick } from "lucide-react";
-import { displayFont } from "../lib/theme";
+import { displayFont } from "../theme";
 import { Card, Badge, StatCard, Button, Modal, Field, inputCls, EmptyState } from "../components/ui";
 
 const CHANNEL_META: Record<string, { icon: any; cls: string }> = {
@@ -67,7 +67,7 @@ export default function MarketingView({ campaigns, onAdd }: MarketingViewProps) 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h2 className="text-xl font-bold text-text-primary" style={{ fontFamily: displayFont }}>Marketing campaigns</h2>
+        <h2 className="text-xl font-bold text-fg" style={{ fontFamily: displayFont }}>Marketing campaigns</h2>
         <Button icon={Plus} onClick={() => setModalOpen(true)}>New campaign</Button>
       </div>
 
@@ -93,28 +93,28 @@ export default function MarketingView({ campaigns, onAdd }: MarketingViewProps) 
                     <meta.icon size={16} />
                   </div>
                   <div>
-                    <div className="font-semibold text-text-primary text-sm">{c.name}</div>
-                    <div className="text-[11px] text-gray-400">{c.channel} campaign</div>
+                    <div className="font-semibold text-fg text-sm">{c.name}</div>
+                    <div className="text-[11px] text-muted">{c.channel} campaign</div>
                   </div>
                 </div>
                 <Badge tone={c.status === "Active" ? "green" : c.status === "Scheduled" ? "amber" : "slate"}>{c.status}</Badge>
               </div>
               <div className="grid grid-cols-3 gap-2 mb-3">
-                <div className="rounded-lg bg-slate-800 p-2.5 text-center">
-                  <div className="text-sm font-bold text-text-primary">{c.sent.toLocaleString()}</div>
-                  <div className="text-[10px] text-gray-400">Sent</div>
+                <div className="rounded-lg bg-app p-2.5 text-center">
+                  <div className="text-sm font-bold text-fg">{c.sent.toLocaleString()}</div>
+                  <div className="text-[10px] text-muted">Sent</div>
                 </div>
-                <div className="rounded-lg bg-slate-800 p-2.5 text-center">
-                  <div className="text-sm font-bold text-text-primary">{openRate}%</div>
-                  <div className="text-[10px] text-gray-400">Opened</div>
+                <div className="rounded-lg bg-app p-2.5 text-center">
+                  <div className="text-sm font-bold text-fg">{openRate}%</div>
+                  <div className="text-[10px] text-muted">Opened</div>
                 </div>
-                <div className="rounded-lg bg-slate-800 p-2.5 text-center">
-                  <div className="text-sm font-bold text-text-primary">{clickRate}%</div>
-                  <div className="text-[10px] text-gray-400">Clicked</div>
+                <div className="rounded-lg bg-app p-2.5 text-center">
+                  <div className="text-sm font-bold text-fg">{clickRate}%</div>
+                  <div className="text-[10px] text-muted">Clicked</div>
                 </div>
               </div>
-              <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden">
-                <div className="h-full bg-indigo-400 rounded-full" style={{ width: `${openRate}%` }} />
+              <div className="h-1.5 rounded-full bg-app overflow-hidden">
+                <div className="h-full bg-brand rounded-full" style={{ width: `${openRate}%` }} />
               </div>
             </Card>
           );

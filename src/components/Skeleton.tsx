@@ -12,10 +12,12 @@ export function Skeleton({ className = "", count = 1 }: SkeletonProps) {
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className={`animate-pulse rounded-lg bg-[#1B1F2A] ${className}`}
+          className={`animate-pulse rounded-lg ${className}`}
           style={{
-            background: "linear-gradient(90deg, #1B1F2A 25%, #252A36 50%, #1B1F2A 75%)",
+            background:
+              "linear-gradient(90deg, var(--color-border) 25%, var(--color-text-muted) 50%, var(--color-border) 75%)",
             backgroundSize: "200% 100%",
+            opacity: 0.35,
             animation: "skeleton-loading 1.5s infinite",
           }}
         />
@@ -32,7 +34,7 @@ export function Skeleton({ className = "", count = 1 }: SkeletonProps) {
 
 export function SkeletonStatCard() {
   return (
-    <div className="bg-[#14171F] border border-[rgba(255,255,255,0.06)] rounded-xl p-5">
+    <div className="bg-surface border rounded-xl p-5">
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <Skeleton className="h-3 w-20 mb-2" />
@@ -47,7 +49,7 @@ export function SkeletonStatCard() {
 
 export function SkeletonTableRow({ cols = 5 }) {
   return (
-    <div className="border-t border-[rgba(255,255,255,0.06)] py-3 px-5 flex gap-4">
+    <div className="border-t py-3 px-5 flex gap-4">
       {Array.from({ length: cols }).map((_, i) => (
         <Skeleton key={i} className={`h-4 ${i === 0 ? "w-32" : "w-20"} flex-1`} />
       ))}
@@ -57,8 +59,8 @@ export function SkeletonTableRow({ cols = 5 }) {
 
 export function SkeletonTable({ rows = 5, cols = 5 }) {
   return (
-    <div className="bg-[#14171F] border border-[rgba(255,255,255,0.06)] rounded-xl overflow-hidden">
-      <div className="px-5 py-3 border-b border-[rgba(255,255,255,0.06)]">
+    <div className="bg-surface border rounded-xl overflow-hidden">
+      <div className="px-5 py-3 border-b">
         <div className="flex gap-4">
           {Array.from({ length: cols }).map((_, i) => (
             <Skeleton key={i} className={`h-3 ${i === 0 ? "w-32" : "w-20"} flex-1`} />
@@ -74,7 +76,7 @@ export function SkeletonTable({ rows = 5, cols = 5 }) {
 
 export function SkeletonChart() {
   return (
-    <div className="bg-[#14171F] border border-[rgba(255,255,255,0.06)] rounded-xl p-5">
+    <div className="bg-surface border rounded-xl p-5">
       <div className="flex items-center justify-between mb-4">
         <Skeleton className="h-4 w-32" />
         <Skeleton className="h-4 w-16" />

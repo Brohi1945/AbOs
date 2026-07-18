@@ -47,7 +47,14 @@ export async function callClaude(systemPrompt: string, history: ChatMessage[], u
     }),
   });
 
-  if (!response.ok) throw new Error(`API error ${response.status}`);
+  if (!response.ok) {
+    let detail: any = null;
+    try { detail = await response.json(); } catch { /* body wasn't JSON */ }
+    const err: any = new Error(`API error ${response.status}`);
+    err.status = response.status;
+    err.detail = detail;
+    throw err;
+  }
   const data = await response.json();
   const text = (data.content || [])
     .filter((block: any) => block.type === "text")

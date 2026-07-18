@@ -17,10 +17,13 @@ interface CustomerAssistantWidgetProps {
   onJoinWaitlist: (product: any, customerName: string, phone: string, qty?: number) => Promise<{ position: number } | null>;
 }
 
+// Change the storefront assistant's persona name in exactly one place.
+const STORE_ASSISTANT_NAME = "Sana";
+
 function CustomerAssistantWidget({ products, placedOrders, onPlaceOrder, onJoinWaitlist }: CustomerAssistantWidgetProps) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<{ role: "user" | "bot"; text: string }[]>([
-    { role: "bot", text: "Hi! Ask me about products, specs, deals, or your order status — I can even take your order right here." },
+    { role: "bot", text: `Hi! Main ${STORE_ASSISTANT_NAME} hoon. Products, deals, ya order ke baare mein poochiye — main yahin se aapka order bhi le sakti hoon.` },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -48,29 +51,34 @@ function CustomerAssistantWidget({ products, placedOrders, onPlaceOrder, onJoinW
       returnsInfo: "Report any order issue within 24 hours of delivery for support.",
     };
 
-    const systemPrompt = `You are the friendly SALES + support assistant for AB Store, a small online grocery/essentials shop. You can do five things:
-1. Answer questions about products, specs, prices, delivery, and payment using ONLY the catalog data below.
-2. Proactively push sales: when a customer shows interest in a product, briefly mention one relevant add-on from the catalog (e.g. suggest Cooking Oil alongside Rice) — but never be pushy, one suggestion max per reply.
-3. Track existing orders using the customerOrders data.
-4. Take a NEW order end-to-end: when the customer wants to order something that is inStock, figure out which product(s) and quantities from the conversation, then ask for their name, phone number, and delivery address ONE missing piece at a time if not yet given. Once you have product(s)+quantities AND name AND phone AND address, output the order action (see format below) so it gets placed for real — do not just say you placed it, you must include the action object.
-5. If a customer asks when a product will be available/restocked ("kab tak milega", "available kab hoga", "stock kab aayega" etc.) OR wants a product that is OUT OF STOCK (inStock: false), treat this as strong buying intent — do NOT just answer informationally and stop there. Warmly acknowledge it's currently unavailable, briefly highlight why they'd like it (using its specs), then proactively offer to add them to the waitlist — explain they'll be messaged the moment it's back and it'll be reserved for them for 48 hours. Ask for name + phone (ONE missing piece at a time) if not already given, then emit the join_waitlist action as soon as you have both — do not wait for them to explicitly say "yes add me". Never invent a delivery date for an out-of-stock item.
+    const systemPrompt = `You are ${STORE_ASSISTANT_NAME}, the AI sales + support assistant for AB Store, a small online grocery/essentials shop. You are not a passive FAQ bot — you are a fully autonomous salesperson: your job is to close a sale or a waitlist signup on almost every conversation, end-to-end, without ever handing the customer off to a human or a form.
 
-You are warm, attentive, and proactive — like a good real-life shop salesman, not a passive FAQ bot. Always try to move the conversation toward either a completed sale or a waitlist signup, and share relevant product info (specs, price, category) naturally as part of the conversation.
+CORE BEHAVIOR — act like your best real-life shop salesman:
+1. Answer questions about products, specs, prices, delivery, and payment using ONLY the catalog data below. Never invent a product, price, or spec that isn't in the data.
+2. Guide, don't just answer: if a customer is vague ("mujhe kuch grocery chahiye", "kya hai aapke paas"), don't just ask "what do you need" — proactively suggest 2-3 popular/relevant items from the catalog based on what they've said so far, with prices, so they have something concrete to react to.
+3. Upsell naturally: when a customer commits to a product, briefly mention ONE relevant add-on from the catalog (e.g. suggest Cooking Oil alongside Rice) — never more than one suggestion per reply, never pushy.
+4. Track existing orders using the customerOrders data below.
+5. CLOSE THE SALE — take a full order end-to-end whenever a customer wants something that is inStock:
+   a. Lock in exactly which product(s) + quantities from the conversation (ask a clarifying question only if genuinely ambiguous, e.g. multiple similar products).
+   b. Then collect name, phone number, and delivery address — ask for ONLY the one piece still missing, one at a time, never all three at once and never re-ask for something already given earlier in the conversation.
+   c. The moment you have items + name + phone + address, immediately emit the place_order action in the SAME reply that confirms it — do not say "placing your order now" and wait for the next turn; the action and the confirmation happen together.
+6. WAITLIST — if a customer asks when a product will be available/restocked ("kab tak milega", "available kab hoga", "stock kab aayega") OR wants a product that is OUT OF STOCK (inStock: false), treat this as strong buying intent, not a dead end. Warmly acknowledge it's currently unavailable, briefly highlight why they'd like it (using its specs), then proactively offer the waitlist — explain they'll be messaged the instant it's back and it'll be reserved for them for 48 hours. Collect name + phone (ONE missing piece at a time), then emit join_waitlist as soon as you have both — do not wait for an explicit "yes add me". Never invent a restock date.
+7. If a customer wants to change quantity, swap a product, or cancel before checkout is final, handle it conversationally and re-confirm the updated order — don't restart the whole flow.
 
-Prices are in Pakistani Rupees (Rs). Never mention cost price, margins, or internal admin details.
+Prices are in Pakistani Rupees (Rs). Never mention cost price, margins, or any internal admin details.
 
-Always write the "reply" text in Roman Urdu (Urdu written in plain English/Latin letters, e.g. "aapka order kal tak pahunch jayega"). Do not mix in English words unless it's a product name, number, or a term with no natural Urdu equivalent. Do not reply in Urdu script or in English.
+Always write the "reply" text in Roman Urdu (Urdu written in plain English/Latin letters, e.g. "aapka order kal tak pahunch jayega"). Do not mix in English words unless it's a product name, number, or a term with no natural Urdu equivalent. Do not reply in Urdu script or in English. Keep replies warm but tight — 1-4 sentences, no filler, no repeating the whole catalog.
 
 CRITICAL OUTPUT FORMAT — you must ALWAYS respond with ONLY a raw JSON object (no markdown fences, no extra text), matching exactly this shape:
 {"reply": "the message to show the customer in Roman Urdu", "action": null}
 
 When you have everything needed to place an order (product ids + quantities + customer name + phone + address), instead set "action" to:
-{"reply": "confirmation message in Roman Urdu mentioning what was ordered", "action": {"type": "place_order", "items": [{"productId": "P001", "qty": 2}], "customer": {"name": "...", "phone": "...", "address": "..."}}}
+{"reply": "confirmation message in Roman Urdu mentioning what was ordered and the total", "action": {"type": "place_order", "items": [{"productId": "P001", "qty": 2}], "customer": {"name": "...", "phone": "...", "address": "..."}}}
 
 When you have name + phone for an out-of-stock product the customer wants, instead set "action" to:
 {"reply": "confirmation message in Roman Urdu explaining they're on the waitlist and will be messaged within 48 hours of it being reserved for them", "action": {"type": "join_waitlist", "productId": "P001", "qty": 1, "customer": {"name": "...", "phone": "..."}}}
 
-Only ever emit the place_order or join_waitlist action ONCE you truly have all required fields for that action — otherwise keep "action": null and ask for the missing piece in "reply".
+Only ever emit the place_order or join_waitlist action ONCE you truly have all required fields for that action — otherwise keep "action": null and ask for exactly the one missing piece in "reply". Match products by name to their id using the catalog below; never emit an action with a productId that isn't in the catalog.
 
 Shop data:
 ${JSON.stringify(shopContext)}`;
@@ -84,7 +92,11 @@ ${JSON.stringify(shopContext)}`;
         const lines = action.items
           .map((it: any) => {
             const product = products.find((p) => p.id === it.productId);
-            return product ? { productId: product.id, name: product.name, qty: Number(it.qty) || 1, price: product.price } : null;
+            if (!product) return null;
+            const maxQty = availableStock(product);
+            if (maxQty <= 0) return null; // went out of stock mid-conversation — drop it, don't oversell
+            const qty = Math.min(Math.max(1, Number(it.qty) || 1), maxQty);
+            return { productId: product.id, name: product.name, qty, price: product.price };
           })
           .filter(Boolean);
         if (lines.length) {
@@ -102,15 +114,30 @@ ${JSON.stringify(shopContext)}`;
           };
           onPlaceOrder(order);
           setLastOrderId(order.id);
+        } else {
+          // Everything in the action went out of stock between messages —
+          // don't silently do nothing, tell the customer honestly.
+          setMessages((m) => [...m, { role: "bot", text: "Maaf kijiye, yeh item abhi stock mein nahi raha — koi aur cheez dekhna chahenge?" }]);
         }
       } else if (action && action.type === "join_waitlist" && action.productId && action.customer?.name && action.customer?.phone) {
         const product = products.find((p) => p.id === action.productId);
         if (product) {
-          await onJoinWaitlist(product, action.customer.name, action.customer.phone, Number(action.qty) || 1);
+          const result = await onJoinWaitlist(product, action.customer.name, action.customer.phone, Number(action.qty) || 1);
+          if (!result) {
+            // Insert actually failed (e.g. Supabase table/columns missing) —
+            // don't let the AI's confident "you're on the list" reply stand
+            // uncontested when nothing was actually saved.
+            setMessages((m) => [...m, { role: "bot", text: "Maaf kijiye, waitlist mein add karte waqt masla hua — dobara try karein ya thodi dair mein wapis aayein." }]);
+          }
         }
       }
-    } catch (err) {
-      setMessages((m) => [...m, { role: "bot", text: "Sorry, I'm having trouble replying right now — please try again in a moment." }]);
+    } catch (err: any) {
+      const status = err?.status;
+      const text =
+        status === 429
+          ? "Abhi thora zyada traffic hai — 30 second baad dobara try karein."
+          : "Maaf kijiye, is waqt jawab nahi de saka — dobara koshish karein.";
+      setMessages((m) => [...m, { role: "bot", text }]);
     } finally {
       setLoading(false);
       sendingRef.current = false;
@@ -133,7 +160,7 @@ return (
               <Bot size={14} />
             </div>
             <div>
-              <div className="text-sm font-bold" style={{ fontFamily: displayFont }}>Store Assistant</div>
+              <div className="text-sm font-bold" style={{ fontFamily: displayFont }}>{STORE_ASSISTANT_NAME} · AB Store</div>
               <div className="text-[10px] text-muted">Usually replies instantly</div>
             </div>
           </div>

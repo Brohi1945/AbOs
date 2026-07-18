@@ -144,6 +144,6 @@ export async function seedIfEmpty(seedProductsList, seedOrdersList) {
     .from("orders")
     .select("*", { count: "exact", head: true });
   if (!orderCount) {
-    await supabase.from("orders").insert(orderCount ? [] : seedOrdersList);
+    await supabase.from("orders").insert(seedOrdersList);
   }
 }

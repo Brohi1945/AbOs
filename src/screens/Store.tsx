@@ -18,12 +18,12 @@ interface CustomerAssistantWidgetProps {
 }
 
 // Change the storefront assistant's persona name in exactly one place.
-const STORE_ASSISTANT_NAME = "Sana";
+const STORE_ASSISTANT_NAME = "ABI";
 
 function CustomerAssistantWidget({ products, placedOrders, onPlaceOrder, onJoinWaitlist }: CustomerAssistantWidgetProps) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<{ role: "user" | "bot"; text: string }[]>([
-    { role: "bot", text: `Hi! Main ${STORE_ASSISTANT_NAME} hoon. Products, deals, ya order ke baare mein poochiye — main yahin se aapka order bhi le sakti hoon.` },
+    { role: "bot", text: `Hi! Main ${STORE_ASSISTANT_NAME} hoon. Products, deals, ya order ke baare mein poochiye — main yahin se aapka order bhi le sakta hoon.` },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -61,7 +61,8 @@ CORE BEHAVIOR — act like your best real-life shop salesman:
 5. CLOSE THE SALE — take a full order end-to-end whenever a customer wants something that is inStock:
    a. Lock in exactly which product(s) + quantities from the conversation (ask a clarifying question only if genuinely ambiguous, e.g. multiple similar products).
    b. Then collect name, phone number, and delivery address — ask for ONLY the one piece still missing, one at a time, never all three at once and never re-ask for something already given earlier in the conversation.
-   c. The moment you have items + name + phone + address, immediately emit the place_order action in the SAME reply that confirms it — do not say "placing your order now" and wait for the next turn; the action and the confirmation happen together.
+   c. HARD RULE: never emit place_order, and never say the order is confirmed, unless customer.name, customer.phone, AND customer.address are all real, non-empty values actually given by the customer in this conversation. If even one is missing, keep "action": null and ask for exactly that missing piece — do not guess, do not leave a field blank, do not say "confirmed" while still waiting on something.
+   d. The moment you truly have items + name + phone + address, immediately emit the place_order action in the SAME reply that confirms it — do not say "placing your order now" and wait for the next turn; the action and the confirmation happen together.
 6. WAITLIST — if a customer asks when a product will be available/restocked ("kab tak milega", "available kab hoga", "stock kab aayega") OR wants a product that is OUT OF STOCK (inStock: false), treat this as strong buying intent, not a dead end. Warmly acknowledge it's currently unavailable, briefly highlight why they'd like it (using its specs), then proactively offer the waitlist — explain they'll be messaged the instant it's back and it'll be reserved for them for 48 hours. Collect name + phone (ONE missing piece at a time), then emit join_waitlist as soon as you have both — do not wait for an explicit "yes add me". Never invent a restock date.
 7. If a customer wants to change quantity, swap a product, or cancel before checkout is final, handle it conversationally and re-confirm the updated order — don't restart the whole flow.
 
@@ -86,52 +87,75 @@ ${JSON.stringify(shopContext)}`;
     try {
       const raw = await callClaude(systemPrompt, history, q);
       const { reply, action } = parseAssistantReply(raw);
-      setMessages((m) => [...m, { role: "bot", text: reply }]);
 
       if (action && action.type === "place_order" && Array.isArray(action.items) && action.items.length) {
-        const lines = action.items
-          .map((it: any) => {
-            const product = products.find((p) => p.id === it.productId);
-            if (!product) return null;
-            const maxQty = availableStock(product);
-            if (maxQty <= 0) return null; // went out of stock mid-conversation — drop it, don't oversell
-            const qty = Math.min(Math.max(1, Number(it.qty) || 1), maxQty);
-            return { productId: product.id, name: product.name, qty, price: product.price };
-          })
-          .filter(Boolean);
-        if (lines.length) {
-          const total = lines.reduce((s: number, l: any) => s + l.price * l.qty, 0);
-          const order = {
-            id: genId("ORD"),
-            customer: action.customer?.name || "Website customer",
-            phone: action.customer?.phone || "",
-            address: action.customer?.address || "",
-            channel: "AI Assistant",
-            items: lines.map((l: any) => ({ productId: l.productId, name: l.name, qty: l.qty })),
-            total,
-            status: "pending",
-            date: new Date().toLocaleString(),
-          };
-          onPlaceOrder(order);
-          setLastOrderId(order.id);
+        const customerName = (action.customer?.name || "").trim();
+        const customerPhone = (action.customer?.phone || "").trim();
+        const customerAddress = (action.customer?.address || "").trim();
+
+        if (!customerName || !customerPhone || !customerAddress) {
+          // The model claimed it had everything and its "reply" text likely
+          // says "order confirmed" — never trust that self-report or show it
+          // to the customer. Replace it with an honest ask for what's missing
+          // so they never see a false confirmation followed by a contradiction.
+          const missing = [!customerName && "naam", !customerPhone && "phone number", !customerAddress && "delivery address"].filter(Boolean).join(", ");
+          setMessages((m) => [...m, { role: "bot", text: `Ek second — order confirm karne se pehle mujhe aapka ${missing} chahiye, tabhi delivery arrange ho sakegi.` }]);
         } else {
-          // Everything in the action went out of stock between messages —
-          // don't silently do nothing, tell the customer honestly.
-          setMessages((m) => [...m, { role: "bot", text: "Maaf kijiye, yeh item abhi stock mein nahi raha — koi aur cheez dekhna chahenge?" }]);
+          const lines = action.items
+            .map((it: any) => {
+              const product = products.find((p) => p.id === it.productId);
+              if (!product) return null;
+              const maxQty = availableStock(product);
+              if (maxQty <= 0) return null; // went out of stock mid-conversation — drop it, don't oversell
+              const qty = Math.min(Math.max(1, Number(it.qty) || 1), maxQty);
+              return { productId: product.id, name: product.name, qty, price: product.price };
+            })
+            .filter(Boolean);
+          if (lines.length) {
+            setMessages((m) => [...m, { role: "bot", text: reply }]);
+            const total = lines.reduce((s: number, l: any) => s + l.price * l.qty, 0);
+            const order = {
+              id: genId("ORD"),
+              customer: customerName,
+              phone: customerPhone,
+              address: customerAddress,
+              channel: "AI Assistant",
+              items: lines.map((l: any) => ({ productId: l.productId, name: l.name, qty: l.qty })),
+              total,
+              status: "pending",
+              date: new Date().toLocaleString(),
+            };
+            onPlaceOrder(order);
+            setLastOrderId(order.id);
+          } else {
+            // Everything in the action went out of stock between messages —
+            // don't show the model's stale confirmation, tell the customer honestly instead.
+            setMessages((m) => [...m, { role: "bot", text: "Maaf kijiye, yeh item abhi stock mein nahi raha — koi aur cheez dekhna chahenge?" }]);
+          }
         }
-      } else if (action && action.type === "join_waitlist" && action.productId && action.customer?.name && action.customer?.phone) {
+      } else if (action && action.type === "join_waitlist" && action.productId && (action.customer?.name || "").trim() && (action.customer?.phone || "").trim()) {
         const product = products.find((p) => p.id === action.productId);
         if (product) {
-          const result = await onJoinWaitlist(product, action.customer.name, action.customer.phone, Number(action.qty) || 1);
-          if (!result) {
+          const result = await onJoinWaitlist(product, action.customer.name.trim(), action.customer.phone.trim(), Number(action.qty) || 1);
+          if (result) {
+            setMessages((m) => [...m, { role: "bot", text: reply }]);
+          } else {
             // Insert actually failed (e.g. Supabase table/columns missing) —
             // don't let the AI's confident "you're on the list" reply stand
             // uncontested when nothing was actually saved.
             setMessages((m) => [...m, { role: "bot", text: "Maaf kijiye, waitlist mein add karte waqt masla hua — dobara try karein ya thodi dair mein wapis aayein." }]);
           }
+        } else {
+          setMessages((m) => [...m, { role: "bot", text: reply }]);
         }
+      } else {
+        setMessages((m) => [...m, { role: "bot", text: reply }]);
       }
     } catch (err: any) {
+      // Log the real error so it shows up in browser devtools / Vercel
+      // function logs — helps diagnose a specific failure instead of
+      // guessing from just the generic message the customer sees.
+      console.error("[StoreAssistant] callClaude failed:", err);
       const status = err?.status;
       const text =
         status === 429

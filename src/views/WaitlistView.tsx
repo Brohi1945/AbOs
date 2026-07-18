@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { ListChecks, RefreshCw, Trash2 } from "lucide-react";
-import { displayFont } from "../lib/theme";
+import { displayFont } from "../theme";
 import { Card, Badge, Button, EmptyState } from "../components/ui";
 import { fetchAllWaitlist, deleteWaitlistRow } from "../supabaseClient";
 import { toastSuccess } from "../lib/toast";
@@ -45,7 +45,7 @@ export default function WaitlistView({ products }: WaitlistViewProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h2 className="text-xl font-bold text-[#E8E9ED]" style={{ fontFamily: displayFont }}>Waitlist</h2>
+        <h2 className="text-xl font-bold text-fg" style={{ fontFamily: displayFont }}>Waitlist</h2>
         <Button variant="secondary" size="sm" icon={RefreshCw} onClick={load}>
           Refresh
         </Button>
@@ -57,7 +57,7 @@ export default function WaitlistView({ products }: WaitlistViewProps) {
             key={f}
             onClick={() => setFilter(f)}
             className={`text-xs font-semibold px-3.5 py-2 rounded-xl whitespace-nowrap transition capitalize ${
-              filter === f ? "bg-[#C9A44C] text-black" : "bg-[#14171F] border border-[rgba(255,255,255,0.06)] text-[#8B8F9C]"
+              filter === f ? "bg-brand text-white" : "bg-app border text-muted"
             }`}
           >
             {f}
@@ -67,14 +67,14 @@ export default function WaitlistView({ products }: WaitlistViewProps) {
 
       <Card noPad>
         {loading ? (
-          <div className="px-5 py-10 text-center text-sm text-[#8B8F9C]">Loading…</div>
+          <div className="px-5 py-10 text-center text-sm text-muted">Loading…</div>
         ) : filtered.length === 0 ? (
           <EmptyState icon={ListChecks} title="No waitlist entries" note="Customers who ask to be notified about out-of-stock products will show up here." />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-[11px] text-[#8B8F9C] font-semibold uppercase tracking-wide">
+                <tr className="text-left text-[11px] text-muted font-semibold uppercase tracking-wide">
                   <th className="px-5 py-3">Product</th>
                   <th className="px-5 py-3">Customer</th>
                   <th className="px-5 py-3">Phone</th>
@@ -89,18 +89,18 @@ export default function WaitlistView({ products }: WaitlistViewProps) {
                 {filtered.map((e) => {
                   const product = products.find((p) => p.id === e.product_id);
                   return (
-                    <tr key={e.id} className="border-t border-[rgba(255,255,255,0.06)] hover:bg-white/5 transition">
-                      <td className="px-5 py-3.5 font-semibold text-[#E8E9ED]">{product?.name || e.product_id}</td>
-                      <td className="px-5 py-3.5 text-[#C7C9D1]">{e.customer_name || "—"}</td>
-                      <td className="px-5 py-3.5 text-[#8B8F9C]">{e.phone || "—"}</td>
-                      <td className="px-5 py-3.5 text-[#C7C9D1]">{e.qty || 1}</td>
+                    <tr key={e.id} className="border-t border hover:bg-white/5 transition">
+                      <td className="px-5 py-3.5 font-semibold text-fg">{product?.name || e.product_id}</td>
+                      <td className="px-5 py-3.5 text-muted">{e.customer_name || "—"}</td>
+                      <td className="px-5 py-3.5 text-muted">{e.phone || "—"}</td>
+                      <td className="px-5 py-3.5 text-muted">{e.qty || 1}</td>
                       <td className="px-5 py-3.5">
                         <Badge tone={e.channel === "WhatsApp" ? "green" : "indigo"}>{e.channel || "Website"}</Badge>
                       </td>
                       <td className="px-5 py-3.5">
                         <Badge tone={STATUS_TONE[e.status] || "slate"}>{e.status || "waiting"}</Badge>
                       </td>
-                      <td className="px-5 py-3.5 text-[#8B8F9C] text-xs">
+                      <td className="px-5 py-3.5 text-muted text-xs">
                         {e.joined_at ? new Date(e.joined_at).toLocaleDateString() : "—"}
                       </td>
                       <td className="px-5 py-3.5 text-right">

@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import { ShoppingCart, Barcode, Plus, X, Minus, CreditCard, Printer } from "lucide-react";
-import { displayFont } from "../lib/theme";
+import { displayFont } from "../theme";
 import { genId, money } from "../lib/utils";
 import { Card, Badge, Button, Modal, EmptyState } from "../components/ui";
 
@@ -79,7 +79,7 @@ export default function POSView({ products, onCheckout }: POSViewProps) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold text-[#E8E9ED]" style={{ fontFamily: displayFont }}>POS / Retail mode</h2>
+      <h2 className="text-xl font-bold text-fg" style={{ fontFamily: displayFont }}>POS / Retail mode</h2>
 
       <div className="grid lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 space-y-4">
@@ -93,7 +93,7 @@ export default function POSView({ products, onCheckout }: POSViewProps) {
                   value={barcodeInput}
                   onChange={(e) => setBarcodeInput(e.target.value)}
                   placeholder="Scan or type barcode, then press Enter…"
-                  className="w-full pl-10 pr-3.5 py-2.5 rounded-xl text-sm bg-indigo-500/10 border border-indigo-500/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-400 transition text-[#E8E9ED]"
+                  className="w-full pl-10 pr-3.5 py-2.5 rounded-xl text-sm bg-indigo-500/10 border-indigo-500/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-400 transition text-fg"
                 />
               </div>
               <Button type="submit">Add</Button>
@@ -106,7 +106,7 @@ export default function POSView({ products, onCheckout }: POSViewProps) {
           </Card>
 
           <Card noPad>
-            <h3 className="font-bold text-[#E8E9ED] text-sm px-5 pt-5 mb-3" style={{ fontFamily: displayFont }}>Quick-add products</h3>
+            <h3 className="font-bold text-fg text-sm px-5 pt-5 mb-3" style={{ fontFamily: displayFont }}>Quick-add products</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 px-5 pb-5">
               {products.map((p) => {
                 const inCartQty = cart.find((it) => it.productId === p.id)?.qty || 0;
@@ -116,11 +116,11 @@ export default function POSView({ products, onCheckout }: POSViewProps) {
                     key={p.id}
                     disabled={p.stock <= 0 || atMax}
                     onClick={() => addToCart(p)}
-                    className="text-left rounded-xl border border-[rgba(255,255,255,0.06)] p-3 hover:border-indigo-500/40 hover:shadow-sm transition disabled:opacity-40 disabled:hover:border-[rgba(255,255,255,0.06)]"
+                    className="text-left rounded-xl border p-3 hover:border-indigo-500/40 hover:shadow-sm transition disabled:opacity-40 disabled:hover:border"
                   >
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs mb-2 ${p.color}`}>{p.name.slice(0, 1)}</div>
-                    <div className="text-xs font-semibold text-[#E8E9ED] leading-tight mb-0.5">{p.name}</div>
-                    <div className="text-[11px] text-[#8B8F9C]">
+                    <div className="text-xs font-semibold text-fg leading-tight mb-0.5">{p.name}</div>
+                    <div className="text-[11px] text-muted">
                       {money(p.price)} · {atMax ? "max in cart" : `${p.stock} in stock`}
                     </div>
                   </button>
@@ -132,7 +132,7 @@ export default function POSView({ products, onCheckout }: POSViewProps) {
 
         <Card noPad className="lg:sticky lg:top-20 h-fit">
           <div className="flex items-center justify-between px-5 pt-5 mb-1">
-            <h3 className="font-bold text-[#E8E9ED] text-sm" style={{ fontFamily: displayFont }}>Current bill</h3>
+            <h3 className="font-bold text-fg text-sm" style={{ fontFamily: displayFont }}>Current bill</h3>
             <Badge tone="indigo">{cartLines.length} items</Badge>
           </div>
           {cartLines.length === 0 ? (
@@ -143,31 +143,31 @@ export default function POSView({ products, onCheckout }: POSViewProps) {
                 {cartLines.map((l) => (
                   <div key={l.productId} className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="text-xs font-semibold text-[#E8E9ED] truncate">{l.product.name}</div>
-                      <div className="text-[11px] text-[#8B8F9C]">{money(l.product.price)} each</div>
+                      <div className="text-xs font-semibold text-fg truncate">{l.product.name}</div>
+                      <div className="text-[11px] text-muted">{money(l.product.price)} each</div>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <button onClick={() => updateQty(l.productId, -1)} className="w-6 h-6 rounded-md bg-white/5 flex items-center justify-center text-[#8B8F9C]">
+                      <button onClick={() => updateQty(l.productId, -1)} className="w-6 h-6 rounded-md bg-white/5 flex items-center justify-center text-muted">
                         <Minus size={11} />
                       </button>
-                      <span className="text-xs font-semibold w-5 text-center text-[#E8E9ED]">{l.qty}</span>
+                      <span className="text-xs font-semibold w-5 text-center text-fg">{l.qty}</span>
                       <button
                         onClick={() => updateQty(l.productId, 1)}
                         disabled={l.qty >= l.product.stock}
-                        className="w-6 h-6 rounded-md bg-white/5 flex items-center justify-center text-[#8B8F9C] disabled:opacity-30"
+                        className="w-6 h-6 rounded-md bg-white/5 flex items-center justify-center text-muted disabled:opacity-30"
                       >
                         <Plus size={11} />
                       </button>
-                      <button onClick={() => removeLine(l.productId)} className="w-6 h-6 rounded-md hover:bg-red-500/10 flex items-center justify-center text-[#6B7080] hover:text-red-400">
+                      <button onClick={() => removeLine(l.productId)} className="w-6 h-6 rounded-md hover:bg-red-500/10 flex items-center justify-center text-muted hover:text-red-400">
                         <X size={12} />
                       </button>
                     </div>
                   </div>
                 ))}
               </div>
-              <div className="px-5 py-4 border-t border-[rgba(255,255,255,0.06)] mt-2">
+              <div className="px-5 py-4 border-t border mt-2">
                 <div className="flex items-center justify-between text-sm font-bold mb-3">
-                  <span className="text-[#E8E9ED]">Total</span>
+                  <span className="text-fg">Total</span>
                   <span className="text-indigo-400">{money(total)}</span>
                 </div>
                 <Button className="w-full" size="lg" icon={CreditCard} onClick={handleGenerateInvoice}>
@@ -183,19 +183,19 @@ export default function POSView({ products, onCheckout }: POSViewProps) {
         {invoice && (
           <div>
             <div className="text-center mb-4">
-              <div className="font-bold text-[#E8E9ED]" style={{ fontFamily: displayFont }}>AB OS</div>
-              <div className="text-[11px] text-[#8B8F9C]">{invoice.id} · {invoice.date}</div>
+              <div className="font-bold text-fg" style={{ fontFamily: displayFont }}>AB OS</div>
+              <div className="text-[11px] text-muted">{invoice.id} · {invoice.date}</div>
             </div>
-            <div className="space-y-1.5 mb-4 pb-4 border-b border-dashed border-[rgba(255,255,255,0.15)]">
+            <div className="space-y-1.5 mb-4 pb-4 border-b border-dashed border">
               {invoice.lines.map((l: any) => (
                 <div key={l.productId} className="flex items-center justify-between text-xs">
-                  <span className="text-[#C7C9D1]">{l.qty}x {l.product.name}</span>
-                  <span className="font-semibold text-[#E8E9ED]">{money(l.subtotal)}</span>
+                  <span className="text-muted">{l.qty}x {l.product.name}</span>
+                  <span className="font-semibold text-fg">{money(l.subtotal)}</span>
                 </div>
               ))}
             </div>
             <div className="flex items-center justify-between text-sm font-bold mb-5">
-              <span className="text-[#E8E9ED]">Total</span>
+              <span className="text-fg">Total</span>
               <span className="text-indigo-400">{money(invoice.total)}</span>
             </div>
             <Button className="w-full" icon={Printer} onClick={() => window.print()}>Print receipt</Button>

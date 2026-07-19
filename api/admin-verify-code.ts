@@ -11,8 +11,8 @@
 //  guard) — user ko dobara /api/admin-register call karna hoga.
 // ============================================================
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { supabase, isSupabaseReady } from "./_lib/supabaseServer";
-import { hashOtp, OTP_MAX_ATTEMPTS } from "./_lib/otp";
+import { supabase, isSupabaseReady } from "./_lib/supabaseServer.js";
+import { hashOtp, OTP_MAX_ATTEMPTS } from "./_lib/otp.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") {

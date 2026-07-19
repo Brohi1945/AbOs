@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ShoppingCart, Users, Wallet, AlertTriangle } from "lucide-react";
+import { ShoppingCart, Users, AlertTriangle, Flame, Radio } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from "recharts";
 import { displayFont } from "../theme";
 import { money, todayLabel, computeWeeklyTrend, Order, Product, Customer } from "../lib/utils";
@@ -14,6 +14,15 @@ interface DashboardViewProps {
   products: Product[];
   customers: Customer[];
   onGoTo: (screen: string) => void;
+}
+
+// One entry in the "Live Activity" timeline — merges low-stock alerts and
+// recent orders into a single chronological-feeling feed.
+interface TimelineItem {
+  id: string;
+  message: string;
+  meta: string;
+  tone: "warning" | "success" | "brand" | "danger";
 }
 
 export default function DashboardView({ orders, products, customers, onGoTo }: DashboardViewProps) {
@@ -44,6 +53,28 @@ export default function DashboardView({ orders, products, customers, onGoTo }: D
     return !isNaN(d.getTime()) && d.toDateString() === new Date().toDateString();
   }).length;
 
+  // Build the Live Activity timeline: newest orders + low-stock alerts, interleaved.
+  const timeline: TimelineItem[] = useMemo(() => {
+    const items: TimelineItem[] = [];
+    recentOrders.slice(0, 3).forEach((o) => {
+      items.push({
+        id: `order-${o.id}`,
+        message: `Order ${o.id} — ${o.customer} · ${money(o.total)}`,
+        meta: o.status === "cancelled" ? "Cancelled" : o.status === "delivered" ? "Delivered" : "Placed",
+        tone: o.status === "cancelled" ? "danger" : "success",
+      });
+    });
+    lowStock.slice(0, 3).forEach((p) => {
+      items.push({
+        id: `stock-${p.id}`,
+        message: `${p.name} is low on stock`,
+        meta: `${p.stock} left`,
+        tone: "warning",
+      });
+    });
+    return items.slice(0, 6);
+  }, [recentOrders, lowStock]);
+
   if (loading) {
     return (
       <div className="space-y-5">
@@ -51,8 +82,9 @@ export default function DashboardView({ orders, products, customers, onGoTo }: D
           <div className="h-8 w-48 bg-surface rounded-lg animate-pulse" />
           <div className="h-4 w-64 bg-surface rounded-lg mt-2 animate-pulse" />
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => (
+        <div className="h-40 sm:h-48 bg-surface rounded-3xl animate-pulse" />
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 3 }).map((_, i) => (
             <SkeletonStatCard key={i} />
           ))}
         </div>
@@ -92,15 +124,48 @@ export default function DashboardView({ orders, products, customers, onGoTo }: D
         <p className="text-sm text-muted">{todayLabel()} — here's how the business is doing.</p>
       </div>
 
+      {/* ===== Hero Pulse tile — the day's headline number, theme-aware gradient ===== */}
       <motion.div
-        className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="relative overflow-hidden rounded-3xl p-6 sm:p-8 bg-gradient-to-br from-brand to-accent"
+      >
+        <div className="relative z-10">
+          <div className="text-[11px] font-semibold tracking-wide text-white/75 uppercase">
+            Store Pulse · {todayLabel()}
+          </div>
+          <div
+            className="text-4xl sm:text-5xl font-extrabold text-white mt-1"
+            style={{ fontFamily: displayFont }}
+          >
+            {money(totalSales)}
+          </div>
+          <div className="text-sm text-white/85 mt-1">
+            {orders.length} orders{salesDelta ? ` · ${salesDelta}` : ""}
+          </div>
+          <div className="flex flex-wrap gap-2 mt-4">
+            {ordersToday > 0 && (
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-full bg-white/20 text-white">
+                <Flame size={12} /> {ordersToday} order{ordersToday === 1 ? "" : "s"} today
+              </span>
+            )}
+            {lowStock.length > 0 && (
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-full bg-white/20 text-white">
+                <AlertTriangle size={12} /> {lowStock.length} low-stock
+              </span>
+            )}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ===== Compact stat row ===== */}
+      <motion.div
+        className="grid grid-cols-2 lg:grid-cols-3 gap-4"
         variants={staggerContainer}
         initial="initial"
         animate="animate"
       >
-        <motion.div variants={fadeSlideUp}>
-          <StatCard icon={Wallet} label="Total Sales" value={money(totalSales)} delta={salesDelta} tone="indigo" />
-        </motion.div>
         <motion.div variants={fadeSlideUp}>
           <StatCard
             icon={ShoppingCart}
@@ -113,7 +178,7 @@ export default function DashboardView({ orders, products, customers, onGoTo }: D
         <motion.div variants={fadeSlideUp}>
           <StatCard icon={Users} label="Customers" value={customers.length} tone="indigo" />
         </motion.div>
-        <motion.div variants={fadeSlideUp}>
+        <motion.div variants={fadeSlideUp} className="col-span-2 lg:col-span-1">
           <StatCard
             icon={AlertTriangle}
             label="Low Stock Alerts"
@@ -124,6 +189,7 @@ export default function DashboardView({ orders, products, customers, onGoTo }: D
         </motion.div>
       </motion.div>
 
+      {/* ===== Chart + Live Activity timeline ===== */}
       <div className="grid lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2">
           <div className="flex items-center justify-between mb-3">
@@ -167,26 +233,39 @@ export default function DashboardView({ orders, products, customers, onGoTo }: D
           </div>
         </Card>
 
-        <Card noPad>
+        <Card noPad className="flex flex-col">
           <div className="flex items-center justify-between px-5 pt-5 mb-1">
-            <h3 className="font-bold text-fg text-sm" style={{ fontFamily: displayFont }}>
-              Low stock
+            <h3 className="font-bold text-fg text-sm flex items-center gap-1.5" style={{ fontFamily: displayFont }}>
+              <Radio size={13} className="text-accent" /> Live Activity
             </h3>
-            <button onClick={() => onGoTo("inventory")} className="text-[11px] font-semibold text-indigo-400">
+            <button onClick={() => onGoTo("orders")} className="text-[11px] font-semibold text-indigo-400">
               View all
             </button>
           </div>
-          {lowStock.length === 0 ? (
-            <div className="px-5 py-8 text-xs text-muted text-center">Everything is well stocked.</div>
+          {timeline.length === 0 ? (
+            <div className="px-5 py-8 text-xs text-muted text-center">Nothing new right now.</div>
           ) : (
-            <div className="divide-y divide-white/5">
-              {lowStock.slice(0, 5).map((p) => (
-                <div key={p.id} className="flex items-center justify-between px-5 py-2.5">
-                  <div>
-                    <div className="text-xs font-semibold text-muted">{p.name}</div>
-                    <div className="text-[10px] text-muted">{p.category}</div>
+            <div className="px-5 py-3">
+              {timeline.map((item, i) => (
+                <div key={item.id} className="flex gap-3">
+                  <div className="flex flex-col items-center">
+                    <span
+                      className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
+                        item.tone === "warning"
+                          ? "bg-warning"
+                          : item.tone === "danger"
+                          ? "bg-danger"
+                          : item.tone === "brand"
+                          ? "bg-brand"
+                          : "bg-success"
+                      }`}
+                    />
+                    {i < timeline.length - 1 && <span className="w-px flex-1 bg-fg/10 my-1" />}
                   </div>
-                  <Badge tone="red">{p.stock} left</Badge>
+                  <div className="pb-4 min-w-0">
+                    <div className="text-xs font-semibold text-fg truncate">{item.message}</div>
+                    <div className="text-[10px] text-muted mt-0.5">{item.meta}</div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -194,6 +273,7 @@ export default function DashboardView({ orders, products, customers, onGoTo }: D
         </Card>
       </div>
 
+      {/* ===== Recent orders table (unchanged) ===== */}
       <Card noPad>
         <div className="flex items-center justify-between px-5 pt-5 mb-1">
           <h3 className="font-bold text-fg text-sm" style={{ fontFamily: displayFont }}>

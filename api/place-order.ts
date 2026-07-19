@@ -14,8 +14,8 @@
 //  hi rehta hai (response order-save par depend karta hai, email par nahi).
 // ============================================================
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { supabase, isSupabaseReady } from "./_lib/supabaseServer";
-import { sendOrderConfirmationEmail } from "./_lib/emailClient";
+import { supabase, isSupabaseReady } from "./_lib/supabaseServer.js";
+import { sendOrderConfirmationEmail } from "./_lib/emailClient.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") {

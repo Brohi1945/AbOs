@@ -6,8 +6,6 @@ import { genId } from "./lib/utils";
 import { notifyNewOrder, notifyLowStock } from "./lib/notify";
 import {
   fetchProducts,
-  insertOrder,
-  updateProductRow,
   fetchOrders,
   seedIfEmpty,
   supabase,
@@ -29,6 +27,12 @@ export default function BusinessAutomationSystem() {
   const [orders, setOrders] = useState(seedOrders());
   const [placedOrders, setPlacedOrders] = useState([]);
   const [customers, setCustomers] = useState(seedCustomers());
+
+  // 🔒 SECURITY FIX: admin panel ka asal lock. "session" states:
+  //   undefined = abhi check ho raha hai (kuch render mat karo)
+  //   null      = koi login nahi hai
+  //   object    = genuinely logged-in Supabase session hai
+  const [session, setSession] = useState(undefined);
 
   const navigate = (next) => {
     setScreenStack((s) => {
@@ -82,18 +86,35 @@ export default function BusinessAutomationSystem() {
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
-  // 🔒 SECURITY FIX: agar admin ka Supabase session already active hai
-  // (page refresh ke baad bhi), to seedha admin dashboard par le jao —
-  // taake login har refresh par dobara na karna pade.
+  // 🔒 SECURITY FIX: real Supabase session track karo — sirf isi ke
+  // through admin panel unlock hota hai, koi UI-navigation trick se
+  // nahi. Login/logout hone par yeh khud-b-khud update ho jata hai.
   useEffect(() => {
-    if (!supabase) return;
-    (async () => {
-      const { data } = await supabase.auth.getSession();
+    if (!supabase) {
+      setSession(null);
+      return;
+    }
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data?.session ?? null);
       if (data?.session) {
         setScreenStack((s) => (s[0] === "landing" && s.length === 1 ? ["admin:dashboard"] : s));
       }
-    })();
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+    });
+    return () => listener?.subscription?.unsubscribe();
   }, []);
+
+  // 🔒 SECURITY FIX: agar koi "admin:*" screen par hai lekin real
+  // session nahi hai (chahe URL/history se pahunche ho), turant login
+  // par bhej do. Yeh asal "lock" hai — sirf UI chhupana nahi.
+  useEffect(() => {
+    if (session === undefined) return; // abhi check ho raha hai, sabar karo
+    if (isAdmin && !session) {
+      resetTo("login");
+    }
+  }, [isAdmin, session]);
 
   const updateProductField = (id, fields) => {
     setProducts((ps) => ps.map((p) => (p.id === id ? { ...p, ...fields } : p)));
@@ -112,7 +133,13 @@ export default function BusinessAutomationSystem() {
     })();
   }, []);
 
-  const handlePlaceOrder = (order) => {
+  // 🔒 SECURITY FIX (Stage C): order ab client-side anon key se
+  // seedha insert nahi hoti — /api/place-order (service-role key)
+  // se save hoti hai, jo stock validate karta hai aur total khud
+  // products ki asal price se calculate karta hai (client se aane
+  // wale price/total par bharosa nahi karta). Yahan sirf optimistic
+  // UI update hota hai taake customer ko turant feedback mile.
+  const handlePlaceOrder = async (order) => {
     products.forEach((p) => {
       const line = order.items.find((it) => it.productId === p.id);
       if (!line) return;
@@ -122,13 +149,11 @@ export default function BusinessAutomationSystem() {
     setProducts((ps) =>
       ps.map((p) => {
         const line = order.items.find((it) => it.productId === p.id);
-        if (line) updateProductRow(p.id, { stock: Math.max(0, p.stock - line.qty) });
         return line ? { ...p, stock: Math.max(0, p.stock - line.qty) } : p;
       })
     );
     setOrders((os) => [order, ...os]);
     setPlacedOrders((os) => [order, ...os]);
-    insertOrder(order);
     notifyNewOrder(order);
     setCustomers((cs) => {
       const exists = cs.some((c) => c.name.toLowerCase() === (order.customer || "").toLowerCase());
@@ -146,6 +171,27 @@ export default function BusinessAutomationSystem() {
         ...cs,
       ];
     });
+
+    try {
+      const res = await fetch("/api/place-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: order.items,
+          customer: order.customer,
+          phone: order.phone,
+          address: order.address,
+          channel: order.channel,
+        }),
+      });
+      if (!res.ok) {
+        const errBody = await res.text();
+        console.error("place-order API failed:", errBody);
+      }
+    } catch (err) {
+      console.error("place-order API error:", err.message);
+    }
+
     // Agar yeh order kisi waitlist reservation se match karta hai
     // (same product + same phone), to us reservation ko "converted"
     // mark karo aur reserved stock free karo.
@@ -184,7 +230,7 @@ export default function BusinessAutomationSystem() {
           onLoginAs={(role) => navigate(role === "admin" ? "admin:dashboard" : "store")}
         />
       )}
-      {isAdmin && (
+      {isAdmin && session && (
         <AdminApp
           section={adminSection}
           onSectionChange={(s) => switchSection("admin:" + s)}

@@ -17,10 +17,10 @@
 //                         attempts, verified, expires_at, created_at)
 // ============================================================
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { supabase, isSupabaseReady } from "./_lib/supabaseServer";
-import { sendAdminVerificationEmail } from "./_lib/emailClient";
-import { sendSms } from "./_lib/smsClient";
-import { generateOtp, hashOtp, OTP_TTL_MINUTES } from "./_lib/otp";
+import { supabase, isSupabaseReady } from "./_lib/supabaseServer.js";
+import { sendAdminVerificationEmail } from "./_lib/emailClient.js";
+import { sendSms } from "./_lib/smsClient.js";
+import { generateOtp, hashOtp, OTP_TTL_MINUTES } from "./_lib/otp.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") {
@@ -51,7 +51,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     if (createErr) {
-      // Common case: email already registered.
       return res.status(400).json({ error: createErr.message || "Account create nahi ho saka" });
     }
 
@@ -74,9 +73,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(500).json({ error: "Verification code save nahi ho saka" });
     }
 
-    // Email + SMS dono par bhejo — koi ek fail ho to dusra phir bhi try
-    // hota hai, aur overall response fail nahi hota (owner ke paas kam
-    // se kam ek channel se code pahunch jaye).
     const results = await Promise.allSettled([
       sendAdminVerificationEmail(email, code),
       sendSms(phone, `AB OS admin verification code: ${code} (10 minute mein expire hoga)`),

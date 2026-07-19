@@ -66,6 +66,60 @@ const MAX_ATTEMPTS = 4;
 const RETRY_BASE_DELAY_MS = 250;  // backoff step between retries
 const KEEPALIVE_INTERVAL_MS = 4000; // Android's ~15s auto-pause bug workaround
 
+// BUG FIX: "lambi baat nahi bol sakta, thora bol kar band ho jata hai" —
+// a single long utterance is exactly what Chrome/Android's speech engine
+// handles worst: long replies were hitting the ~15s auto-pause bug (the
+// pause()/resume() keepalive above helps, but isn't fully reliable on
+// every device) or just stalling partway with no error at all. Instead
+// of fighting that on one giant utterance, long replies are now split
+// into short sentence-sized chunks and spoken as a chain of utterances
+// (each one's onend triggers the next) — every individual utterance
+// stays well under the danger zone, and it sounds like one continuous
+// reply to the listener.
+const MAX_CHUNK_CHARS = 140;
+
+function splitIntoChunks(text: string): string[] {
+  const clean = text.trim();
+  if (!clean) return [];
+  // Split on sentence-ending punctuation (., !, ?, Urdu ۔) or newlines.
+  const sentences = clean
+    .split(/(?<=[.!?۔])\s+|\n+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const chunks: string[] = [];
+  let current = "";
+
+  const pushHardSplit = (piece: string) => {
+    // A single "sentence" longer than the limit on its own — hard-split
+    // on word boundaries so it never becomes one unbreakable utterance.
+    let rest = piece;
+    while (rest.length > MAX_CHUNK_CHARS) {
+      let cut = rest.lastIndexOf(" ", MAX_CHUNK_CHARS);
+      if (cut <= 0) cut = MAX_CHUNK_CHARS;
+      chunks.push(rest.slice(0, cut).trim());
+      rest = rest.slice(cut).trim();
+    }
+    return rest;
+  };
+
+  for (const sentence of sentences) {
+    const candidate = current ? `${current} ${sentence}` : sentence;
+    if (candidate.length <= MAX_CHUNK_CHARS) {
+      current = candidate;
+      continue;
+    }
+    if (current) {
+      chunks.push(current);
+      current = "";
+    }
+    current = pushHardSplit(sentence);
+  }
+  if (current) chunks.push(current);
+
+  return chunks.length ? chunks : [clean];
+}
+
 export function useVoiceOutput({
   lang = "ur-PK",
   rate = 1,
@@ -97,6 +151,14 @@ export function useVoiceOutput({
   const preSpeakTimerRef = useRef<number | null>(null);
   const watchdogTimerRef = useRef<number | null>(null);
   const keepAliveTimerRef = useRef<number | null>(null);
+
+  // ---- chunk queue (see splitIntoChunks above) ----
+  const queueRef = useRef<string[]>([]);
+  const chunkIndexRef = useRef(0);
+  // attemptSpeak (defined below) needs to trigger "move on to the next
+  // chunk" from inside utterance.onend, but that function is defined
+  // further down — a ref sidesteps the circular useCallback ordering.
+  const speakNextChunkRef = useRef<(myRequestId: number) => void>(() => {});
 
   useEffect(() => { voiceEnabledRef.current = voiceEnabled; }, [voiceEnabled]);
   useEffect(() => { langRef.current = lang; }, [lang]);
@@ -142,6 +204,8 @@ export function useVoiceOutput({
     clearAllTimers();
     attemptCountRef.current = 0;
     startedRef.current = false;
+    queueRef.current = [];
+    chunkIndexRef.current = 0;
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
     setIsSpeaking(false);
   }, []);
@@ -206,9 +270,18 @@ export function useVoiceOutput({
       utterance.onend = () => {
         if (myRequestId !== requestIdRef.current) return;
         attemptSettledRef.current = true;
-        setIsSpeaking(false);
-        attemptCountRef.current = 0;
         clearAllTimers();
+        // More chunks left in this reply? Chain straight into the next
+        // one so it sounds like one continuous sentence, not separate
+        // clips. Only when the whole queue is done do we actually stop.
+        chunkIndexRef.current += 1;
+        if (chunkIndexRef.current < queueRef.current.length) {
+          attemptCountRef.current = 0;
+          speakNextChunkRef.current(myRequestId);
+        } else {
+          setIsSpeaking(false);
+          attemptCountRef.current = 0;
+        }
       };
 
       utterance.onerror = () => {
@@ -263,11 +336,28 @@ export function useVoiceOutput({
       toastError("Voice out nahi ho saka — device ka media volume aur Text-to-Speech voice pack check karein.");
       setIsSpeaking(false);
       attemptCountRef.current = 0;
+      queueRef.current = [];
+      chunkIndexRef.current = 0;
       return;
     }
     const delay = RETRY_BASE_DELAY_MS * attemptCountRef.current; // 250, 500, 750...
     window.setTimeout(() => attemptSpeak(text, myRequestId), delay);
   }, [attemptSpeak]);
+
+  // Speaks whichever chunk the queue is currently pointing at. attemptSpeak
+  // itself doesn't know about chunking at all — it just speaks whatever
+  // single string it's given, with its own retry/watchdog protection.
+  const speakNextChunk = useCallback((myRequestId: number) => {
+    if (myRequestId !== requestIdRef.current) return;
+    const chunk = queueRef.current[chunkIndexRef.current];
+    if (chunk === undefined) {
+      setIsSpeaking(false);
+      return;
+    }
+    attemptSpeak(chunk, myRequestId);
+  }, [attemptSpeak]);
+
+  useEffect(() => { speakNextChunkRef.current = speakNextChunk; }, [speakNextChunk]);
 
   const speakInternal = useCallback((text: string) => {
     if (!isSupported || !text?.trim()) return;
@@ -275,8 +365,10 @@ export function useVoiceOutput({
     const myRequestId = requestIdRef.current;
     clearAllTimers();
     attemptCountRef.current = 0;
-    attemptSpeak(text, myRequestId);
-  }, [isSupported, attemptSpeak]);
+    queueRef.current = splitIntoChunks(text);
+    chunkIndexRef.current = 0;
+    speakNextChunk(myRequestId);
+  }, [isSupported, speakNextChunk]);
 
   const speak = useCallback((text: string) => {
     // Stale-closure fix: read the ref, not the state captured in whatever

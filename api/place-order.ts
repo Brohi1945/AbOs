@@ -78,6 +78,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       phone: phone || "",
       email: email || "",
       address: address || "",
+      // DB column default hai "unpaid" — yahan explicit set karte hain
+      // taake response mein bhi asal DB state reflect ho (frontend isi
+      // se PaymentStatusBadge render karta hai).
+      payment_status: "unpaid" as const,
+      safepay_tracker: null as string | null,
     };
 
     const { error: insertErr } = await supabase.from("orders").insert(order);
@@ -126,6 +131,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           cancelUrl: `${origin}/?payment=cancelled&order_id=${order.id}`,
         });
         await supabase.from("orders").update({ safepay_tracker: trackerToken }).eq("id", order.id);
+        order.safepay_tracker = trackerToken;
       } catch (payErr: any) {
         console.error("place-order: Safepay session banane mein error", payErr.message);
       }

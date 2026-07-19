@@ -54,7 +54,14 @@ interface UseVoiceOutputReturn {
 }
 
 const PRE_SPEAK_DELAY_MS = 150;   // let cancel() actually clear before speaking again
-const START_TIMEOUT_MS = 600;     // how long to wait for onstart before assuming it silently failed
+// BUG FIX: this used to be 600ms, which is too tight — on real Android
+// devices the TTS engine sometimes genuinely takes 700-1500ms to fire
+// onstart even though audio is *already* playing. The watchdog was firing
+// first, assuming a silent failure, and calling attemptSpeak() again —
+// which immediately does speechSynthesis.cancel(), chopping off the
+// in-progress utterance after just a word or two and restarting it from
+// scratch. That's the "bol kar 1-2 word mein chup ho jata hai" glitch.
+const START_TIMEOUT_MS = 1800;    // how long to wait for onstart before assuming it silently failed
 const MAX_ATTEMPTS = 4;
 const RETRY_BASE_DELAY_MS = 250;  // backoff step between retries
 const KEEPALIVE_INTERVAL_MS = 4000; // Android's ~15s auto-pause bug workaround
@@ -227,6 +234,16 @@ export function useVoiceOutput({
         // or it actually started) — don't double-schedule.
         if (attemptSettledRef.current) return;
         if (!startedRef.current) {
+          // BUG FIX: onstart is just an event — it can lag behind the audio
+          // actually playing. Before declaring this a silent failure and
+          // cutting off real, in-progress speech, check the browser's own
+          // "is it speaking right now" flag. If it says yes, treat that as
+          // started instead of cancelling genuine audio mid-sentence.
+          if ("speechSynthesis" in window && window.speechSynthesis.speaking) {
+            startedRef.current = true;
+            setIsSpeaking(true);
+            return;
+          }
           attemptSettledRef.current = true;
           scheduleRetryOrGiveUp(text, myRequestId);
         }

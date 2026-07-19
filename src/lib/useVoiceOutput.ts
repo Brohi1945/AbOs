@@ -64,7 +64,17 @@ const PRE_SPEAK_DELAY_MS = 150;   // let cancel() actually clear before speaking
 const START_TIMEOUT_MS = 1800;    // how long to wait for onstart before assuming it silently failed
 const MAX_ATTEMPTS = 4;
 const RETRY_BASE_DELAY_MS = 250;  // backoff step between retries
-const KEEPALIVE_INTERVAL_MS = 4000; // Android's ~15s auto-pause bug workaround
+// BUG FIX: this used to be 4000ms. pause()+resume() is itself a known
+// trigger for some Android Chrome builds to silently kill the utterance
+// instead of resuming it — no onend, no onerror, just dead air. That's
+// the "thori der bol kar chup ho jata hai" bug on longer replies: short
+// replies finished before the first nudge ever fired, so they always
+// sounded fine, while anything long enough to reach 4s ran straight into
+// this workaround's own side effect. Pushed close to the real ~15s
+// browser bug boundary (with margin) so it fires far less often, and the
+// check below now detects + recovers from a silent death instead of just
+// hoping resume() worked.
+const KEEPALIVE_INTERVAL_MS = 12000;
 
 // BUG FIX: "lambi baat nahi bol sakta, thora bol kar band ho jata hai" —
 // a single long utterance is exactly what Chrome/Android's speech engine
@@ -264,6 +274,21 @@ export function useVoiceOutput({
           }
           window.speechSynthesis.pause();
           window.speechSynthesis.resume();
+
+          // BUG FIX: verify resume() actually kept the audio going. On the
+          // Android/Chrome builds where this nudge backfires, `speaking`
+          // drops to false right after resume() with no event at all —
+          // that silent drop IS the "5-6 words bol kar chup ho jata hai"
+          // bug. Catch it here and restart just this chunk from scratch
+          // instead of leaving the user with silence.
+          window.setTimeout(() => {
+            if (myRequestId !== requestIdRef.current) return;
+            if (!window.speechSynthesis.speaking && !attemptSettledRef.current) {
+              attemptSettledRef.current = true;
+              if (keepAliveTimerRef.current) { window.clearInterval(keepAliveTimerRef.current); keepAliveTimerRef.current = null; }
+              scheduleRetryOrGiveUp(text, myRequestId);
+            }
+          }, 250);
         }, KEEPALIVE_INTERVAL_MS);
       };
 

@@ -44,12 +44,6 @@ function CustomerAssistantWidget({ products, placedOrders, onPlaceOrder, onJoinW
   // around Roman Urdu (Latin letters). The English recognizer, when it
   // hears Urdu/Hindi words, phonetically spells them out in Latin letters
   // instead — that's what actually gives us Roman Urdu text.
-  const { isSupported: voiceSupported, isListening, interimTranscript, toggleListening } = useVoiceInput({
-    onResult: (transcript) => send(transcript),
-    onError: (message) => toastError(message),
-    lang: "en-US",
-  });
-
   // AI ka jawab bhi bola jaye — Siri/Alexa style. Off by default,
   // customer speaker icon se on karta hai; jab bhi on ho aur naya
   // bot reply aaye, wohi bola jaega.
@@ -58,6 +52,17 @@ function CustomerAssistantWidget({ products, placedOrders, onPlaceOrder, onJoinW
   // expect Urdu SCRIPT input, not Latin transliteration.
   const { isSupported: ttsSupported, isSpeaking, voiceEnabled, toggleVoiceEnabled, speak, speakUnlocked } = useVoiceOutput({
     lang: "en-IN",
+  });
+
+  // BUG FIX: this hook didn't pass `pause: isSpeaking` (unlike the admin
+  // AssistantView), so the mic kept listening while ABI was talking —
+  // on speaker playback it could pick up ABI's own voice, fire a stray
+  // onResult, and that new send() would cancel the reply mid-sentence.
+  const { isSupported: voiceSupported, isListening, interimTranscript, toggleListening } = useVoiceInput({
+    onResult: (transcript) => send(transcript),
+    onError: (message) => toastError(message),
+    lang: "en-US",
+    pause: isSpeaking,
   });
 
   // Every bot reply goes through here so it's shown AND (if voice output

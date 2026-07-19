@@ -10,6 +10,7 @@ import {
   updateProductRow,
   fetchOrders,
   seedIfEmpty,
+  supabase,
 } from "./supabaseClient";
 import { expireStaleReservations, convertWaitlistIfMatched, joinWaitlist } from "./lib/waitlist";
 import LandingScreen from "./screens/Landing";
@@ -79,6 +80,19 @@ export default function BusinessAutomationSystem() {
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  // 🔒 SECURITY FIX: agar admin ka Supabase session already active hai
+  // (page refresh ke baad bhi), to seedha admin dashboard par le jao —
+  // taake login har refresh par dobara na karna pade.
+  useEffect(() => {
+    if (!supabase) return;
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data?.session) {
+        setScreenStack((s) => (s[0] === "landing" && s.length === 1 ? ["admin:dashboard"] : s));
+      }
+    })();
   }, []);
 
   const updateProductField = (id, fields) => {
@@ -174,7 +188,7 @@ export default function BusinessAutomationSystem() {
         <AdminApp
           section={adminSection}
           onSectionChange={(s) => switchSection("admin:" + s)}
-          onLogout={() => resetTo("landing")}
+          onLogout={() => { supabase?.auth.signOut(); resetTo("landing"); }}
           onGoStore={() => navigate("store")}
           products={products}
           setProducts={setProducts}

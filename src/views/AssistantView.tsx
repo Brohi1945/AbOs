@@ -75,6 +75,14 @@ export default function AssistantView({
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
 
+  // AI ka jawab bhi bola jaye — Siri/Alexa style. Off by default,
+  // admin speaker icon se on karta hai.
+  // NOTE: "en-IN" reads Latin-script Roman Urdu text more naturally than
+  // a "ur-PK" voice, which expects Urdu SCRIPT rather than transliteration.
+  const { isSupported: ttsSupported, isSpeaking, voiceEnabled, toggleVoiceEnabled, speak, speakUnlocked } = useVoiceOutput({
+    lang: "en-IN",
+  });
+
   // Voice command: admin bolke bhi dashboard changes kar sakta hai
   // ("stock update karo 50 pieces", "naya product add karo" waghera) —
   // jo bhi bola gaya, seedha usi text ke saath send() call ho jata hai.
@@ -83,18 +91,15 @@ export default function AssistantView({
   // Roman Urdu (Latin letters). The English recognizer phonetically
   // spells out Urdu/Hindi words in Latin letters instead — that's what
   // actually gives us Roman Urdu text.
+  //
+  // pause: isSpeaking — mic mutes itself while ABI is talking so it
+  // never picks up its own voice through the speaker as a "command", and
+  // un-mutes automatically the instant speaking stops (see useVoiceInput).
   const { isSupported: voiceSupported, isListening, interimTranscript, toggleListening } = useVoiceInput({
     onResult: (transcript) => send(transcript),
     onError: (message) => toastError(message),
     lang: "en-US",
-  });
-
-  // AI ka jawab bhi bola jaye — Siri/Alexa style. Off by default,
-  // admin speaker icon se on karta hai.
-  // NOTE: "en-IN" reads Latin-script Roman Urdu text more naturally than
-  // a "ur-PK" voice, which expects Urdu SCRIPT rather than transliteration.
-  const { isSupported: ttsSupported, isSpeaking, voiceEnabled, toggleVoiceEnabled, speak, speakUnlocked } = useVoiceOutput({
-    lang: "en-IN",
+    pause: isSpeaking,
   });
 
   // Every bot reply goes through here so it's shown AND (if voice output
@@ -317,22 +322,42 @@ ${JSON.stringify(storeContext)}`;
   // through a section switch instead of being cut off. ----
   if (mode === "minimized") {
     return (
-      <button
-        type="button"
-        onClick={() => onExpand?.()}
-        title={`${ASSISTANT_NAME} — tap to open`}
-        className="fixed bottom-5 right-5 z-[60] flex items-center gap-2 pl-3 pr-4 py-2.5 rounded-full bg-brand text-white shadow-lg hover:opacity-90 transition"
-      >
-        <span className="relative flex items-center justify-center w-6 h-6 rounded-full bg-white/20 shrink-0">
-          <Bot size={14} />
-          {(isListening || isSpeaking) && (
-            <span className="absolute inset-0 rounded-full bg-white/40 animate-ping" />
-          )}
-        </span>
-        <span className="text-xs font-medium">
-          {isListening ? "Sun raha hoon…" : isSpeaking ? "Bol raha hoon…" : ASSISTANT_NAME}
-        </span>
-      </button>
+      <div className="fixed bottom-5 right-5 z-[60] flex items-center gap-2">
+        {/* BUG FIX: previously the mic button only existed inside the full
+            chat panel, so once minimized there was no way to keep giving
+            voice commands without expanding first. Hands-free listening
+            (see useVoiceInput's keepListeningRef) now also stays active
+            here — this button just lets the admin toggle it on/off while
+            minimized, same as the full view. */}
+        {voiceSupported && (
+          <button
+            type="button"
+            onClick={toggleListening}
+            title={isListening ? "Stop voice input" : "Bol kar command dein"}
+            className={`w-11 h-11 rounded-full flex items-center justify-center shadow-lg transition ${
+              isListening ? "bg-red-500 text-white" : "bg-app border text-muted hover:border-brand"
+            }`}
+          >
+            {isListening ? <MicOff size={16} /> : <Mic size={16} />}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => onExpand?.()}
+          title={`${ASSISTANT_NAME} — tap to open`}
+          className="flex items-center gap-2 pl-3 pr-4 py-2.5 rounded-full bg-brand text-white shadow-lg hover:opacity-90 transition"
+        >
+          <span className="relative flex items-center justify-center w-6 h-6 rounded-full bg-white/20 shrink-0">
+            <Bot size={14} />
+            {(isListening || isSpeaking) && (
+              <span className="absolute inset-0 rounded-full bg-white/40 animate-ping" />
+            )}
+          </span>
+          <span className="text-xs font-medium">
+            {isListening ? "Sun raha hoon…" : isSpeaking ? "Bol raha hoon…" : ASSISTANT_NAME}
+          </span>
+        </button>
+      </div>
     );
   }
 
